@@ -135,18 +135,25 @@ Definition of Done:
 
 ## Epic 2: NSR Engine (Core)
 
-### US-03: Modelo de Domínio Base
+### US-03: Modelo de Domínio Base (Caraíba)
 
-**Como** desenvolvedor, **eu quero** entidades de domínio bem definidas **para** ter uma base sólida para cálculos.
+**Como** desenvolvedor, **eu quero** entidades de domínio bem definidas **para** ter uma base sólida para cálculos NSR da Mina Caraíba.
 
 **Acceptance Criteria:**
-- [ ] AC-1: Entidade `Metal` com propriedades (name, price, unit)
-- [ ] AC-2: Entidade `OreInput` com (tonnage, grade, grade_unit)
-- [ ] AC-3: Entidade `RecoveryParams` com (recovery_rate)
-- [ ] AC-4: Entidade `CommercialTerms` com (payability, tc, rc, penalties)
-- [ ] AC-5: Entidade `NSRResult` com (gross_revenue, deductions, nsr_total, nsr_per_tonne, breakdown)
-- [ ] AC-6: Todas entidades com validação via Pydantic
-- [ ] AC-7: Documentação do domínio em `docs/domain.md`
+- [ ] AC-1: Entidade `Mine` com (name, areas: List[Area])
+- [ ] AC-2: Entidade `Area` com (name, mine_method: UG|OP, recovery_params)
+- [ ] AC-3: Entidade `RecoveryParams` com (a, b, fixed) para fórmula linear: recovery = a × grade + b
+- [ ] AC-4: Entidade `Metal` com (code: Cu|Au|Ag, price, price_unit, is_byproduct)
+- [ ] AC-5: Entidade `HeadGrades` com (cu_grade, au_grade, ag_grade, units)
+- [ ] AC-6: Entidade `MineFactors` com (dilution, ore_recovery)
+- [ ] AC-7: Entidade `CommercialTerms` com (payability, tc, rc, freight, penalties) por metal
+- [ ] AC-8: Entidade `PriceDeck` com cenários (Mineral Resources, Reserves, Consensus)
+- [ ] AC-9: Entidade `NSRResult` com breakdown multi-metal
+- [ ] AC-10: Todas entidades com validação via Pydantic
+- [ ] AC-11: Seed data com minas/áreas de Caraíba (ver NSR_REQUIREMENTS.md)
+- [ ] AC-12: Documentação do domínio em `docs/domain.md`
+
+**Referência:** Ver `NSR_REQUIREMENTS.md` para lista completa de minas, áreas e fórmulas.
 
 **Technical Notes:**
 - Usar Pydantic BaseModel para todas entidades
@@ -173,37 +180,61 @@ docs/
 
 ---
 
-### US-04: Função compute_payable_metal
+### US-04: Função compute_cu_recovery e compute_payable_metal
 
-**Como** NSR Engine, **eu preciso** calcular o metal pagável **para** determinar a quantidade de metal que gera receita.
+**Como** NSR Engine, **eu preciso** calcular a recuperação de Cu e o metal pagável **para** determinar a quantidade de metal que gera receita.
 
 **Acceptance Criteria:**
-- [ ] AC-1: Fórmula: `payable_metal = tonnage × grade × recovery × payability`
-- [ ] AC-2: Suportar conversão de unidades (%, ppm, g/t → fração)
-- [ ] AC-3: Validar inputs (valores positivos, recovery/payability ≤ 100%)
-- [ ] AC-4: Retornar objeto com valor + unidade + fórmula aplicada
-- [ ] AC-5: Função pura (sem side effects)
+- [ ] AC-1: Função `compute_cu_recovery(grade, area)` calcula recuperação por fórmula linear
+- [ ] AC-2: Fórmula de recuperação: `recovery = a × grade + b` (parâmetros por área)
+- [ ] AC-3: Suportar valor fixo de recuperação quando especificado
+- [ ] AC-4: Fórmula payable: `payable_metal = tonnage × grade × recovery × payability`
+- [ ] AC-5: Suportar conversão de unidades (%, ppm, g/t → fração)
+- [ ] AC-6: Validar inputs (valores positivos, recovery/payability ≤ 100%)
+- [ ] AC-7: Retornar objeto com valor + unidade + fórmula aplicada
+- [ ] AC-8: Função pura (sem side effects)
 
 **Technical Notes:**
 - Localização: `backend/app/nsr_engine/calculations.py`
-- Testes com casos conhecidos de Excel
+- Parâmetros de recuperação por área em `backend/app/nsr_engine/recovery_params.py`
+- Testes com casos conhecidos de Excel Caraíba
+
+**Parâmetros de recuperação (seed data):**
+```python
+RECOVERY_PARAMS = {
+    "Vermelhos Sul": {"a": 2.8286, "b": 92.584, "fixed": None},
+    "UG03": {"a": 2.8286, "b": 92.584, "fixed": None},
+    "Deepening Above - 965": {"a": 4.0851, "b": 90.346, "fixed": 92.9},
+    "MSBSUL": {"a": 7.5986, "b": 85.494, "fixed": 90.0},
+    # ... ver NSR_REQUIREMENTS.md para lista completa
+}
+```
 
 **Exemplo de uso:**
 ```python
+# Calcular recuperação
+recovery = compute_cu_recovery(
+    cu_grade=1.4,  # %
+    area="Vermelhos Sul"
+)
+# recovery = 2.8286 × 1.4 + 92.584 = 96.544%
+
+# Calcular metal pagável
 result = compute_payable_metal(
     tonnage=1000,        # tonnes
-    grade=2.5,           # % Cu
-    recovery=0.92,       # 92%
-    payability=0.965     # 96.5%
+    grade=1.4,           # % Cu
+    recovery=0.96544,    # calculado acima
+    payability=0.9665    # 96.65%
 )
-# result.value = 22.241 tonnes Cu payable
+# result.value = ... tonnes Cu payable
 ```
 
 **Definition of Done:**
-- [ ] Função implementada
-- [ ] ≥ 5 testes unitários
+- [ ] Funções implementadas
+- [ ] ≥ 5 testes unitários para cada função
+- [ ] Parâmetros de recuperação para todas áreas de Caraíba
 - [ ] Validação de inputs
-- [ ] Docstring com fórmula
+- [ ] Docstring com fórmulas
 
 ---
 
@@ -275,39 +306,69 @@ DeductionsResult(
 
 ---
 
-### US-07: Função compute_nsr_total e compute_nsr_per_tonne
+### US-07: Função compute_nsr_complete (Multi-Metal Caraíba)
 
-**Como** usuário, **eu quero** o NSR total e por tonelada **para** tomar decisões de cut-off e planejamento.
+**Como** usuário, **eu quero** o NSR total e por tonelada com breakdown multi-metal **para** tomar decisões de cut-off e planejamento.
 
 **Acceptance Criteria:**
-- [ ] AC-1: `nsr_total = gross_revenue - total_deductions`
-- [ ] AC-2: `nsr_per_tonne = nsr_total / ore_tonnage`
-- [ ] AC-3: Retornar objeto com todos componentes (para transparency)
-- [ ] AC-4: Suportar moeda configurável
-- [ ] AC-5: Função pura que orquestra as anteriores
+- [ ] AC-1: Calcular preço do concentrado por metal (Cu, Au, Ag)
+- [ ] AC-2: Calcular NSR por metal ($/t ore)
+- [ ] AC-3: Aplicar fatores de mina: `nsr_mine = nsr_processing × (1 - dilution) × ore_recovery`
+- [ ] AC-4: Calcular 3 níveis de NSR: Mineral Resources, Processing, Mine
+- [ ] AC-5: Retornar breakdown com contribuição de cada metal
+- [ ] AC-6: Retornar perdas detalhadas (diluição, recovery)
+- [ ] AC-7: Suportar moeda configurável (default USD)
+- [ ] AC-8: Função pura que orquestra as anteriores
 
 **Technical Notes:**
 - Esta é a função principal que usuários chamam
 - Deve retornar breakdown completo para auditoria
+- Ver NSR_REQUIREMENTS.md para fórmulas detalhadas
 
 **Estrutura de retorno:**
 ```python
 NSRResult(
-    gross_revenue=189048.50,
-    deductions=DeductionsResult(...),
-    nsr_total=180048.50,
-    nsr_per_tonne=180.05,
+    # Preço do concentrado
+    conc_price_cu=2824.68,
+    conc_price_au=244.76,
+    conc_price_ag=29.65,
+    conc_price_total=3099.09,
+    
+    # NSR por metal ($/t ore)
+    nsr_cu=108.21,
+    nsr_au=9.38,
+    nsr_ag=1.14,
+    
+    # NSR por nível
+    nsr_mineral_resources=175.61,  # Antes de processing
+    nsr_processing=131.76,         # Após perdas de processing
+    nsr_mine=148.01,               # Após diluição e ore recovery
+    nsr_per_tonne=118.72,          # NSR final
+    
+    # Perdas
+    dilution_loss=27.60,
+    recovery_loss=16.25,
+    
+    # Metadados
     currency="USD",
-    ore_tonnage=1000,
-    formula_applied="NSR = (tonnage × grade × recovery × payability × price) - TC - RC - penalties",
-    inputs_used={...}  # todos inputs para auditoria
+    ore_tonnage=20000,
+    conc_ratio=0.0383,
+    cu_recovery=0.9654,
+    formula_applied="Ver NSR_REQUIREMENTS.md",
+    inputs_used={...}
 )
 ```
+
+**Golden Test Case (Vermelhos Sul):**
+- Cu Grade: 1.4%, Au: 0.23 g/t, Ag: 2.33 g/t
+- NSR Total esperado: ~$118.72/t ore
+- Tolerância: ≤0.1%
 
 **Definition of Done:**
 - [ ] Funções implementadas
 - [ ] Testes end-to-end do cálculo completo
-- [ ] Validação contra casos de Excel (≥3 casos, diff ≤0.1%)
+- [ ] Golden test com caso Vermelhos Sul
+- [ ] Validação contra Excel Caraíba (diff ≤0.1%)
 
 ---
 
