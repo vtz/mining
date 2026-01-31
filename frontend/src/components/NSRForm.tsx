@@ -222,6 +222,29 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
             {loadingPrices ? 'Atualizando...' : 'Atualizar'}
           </button>
         </div>
+        
+        {/* Price Disclaimer */}
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-xs text-amber-800">
+            <strong>Disclaimer:</strong> Preços obtidos via{' '}
+            <a 
+              href="https://www.cmegroup.com/markets/metals.html" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="underline hover:text-amber-900"
+            >
+              COMEX (CME Group)
+            </a>
+            , o principal mercado de futuros de metais dos EUA. Os valores representam 
+            cotações de contratos futuros e podem diferir dos preços spot. 
+            Para decisões financeiras, consulte fontes oficiais e profissionais qualificados.
+            {!priceIsLive && priceSource === 'default' && (
+              <span className="block mt-1 text-amber-700">
+                Preços padrão de Janeiro/2026. Configure a API key para dados em tempo real.
+              </span>
+            )}
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
