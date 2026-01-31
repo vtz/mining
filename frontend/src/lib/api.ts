@@ -77,6 +77,40 @@ export async function checkHealth(): Promise<{ status: string; version: string }
   return response.json();
 }
 
+export interface MetalPrice {
+  value: number;
+  unit: string;
+  name: string;
+}
+
+export interface MetalPricesResponse {
+  prices: {
+    cu: MetalPrice;
+    au: MetalPrice;
+    ag: MetalPrice;
+  };
+  metadata: {
+    source: string;
+    timestamp: number;
+    is_live: boolean;
+  };
+}
+
+export async function fetchMetalPrices(refresh: boolean = false): Promise<MetalPricesResponse> {
+  const url = new URL(`${API_BASE_URL}/api/v1/prices`);
+  if (refresh) {
+    url.searchParams.set('refresh', 'true');
+  }
+  
+  const response = await fetch(url.toString());
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch metal prices');
+  }
+  
+  return response.json();
+}
+
 // Mine and area data (from Caraíba)
 export const MINES_DATA = {
   'Vermelhos UG': ['Vermelhos Sul', 'UG03', 'N5/UG04', 'N8 - UG'],

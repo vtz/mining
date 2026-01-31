@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: List[str] = ["http://localhost:3000"]
 
+    # Metal Price API (get free key at metalpriceapi.com)
+    metal_price_api_key: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { MINES_DATA, MineName, NSRInput } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { MINES_DATA, MineName, NSRInput, fetchMetalPrices, MetalPricesResponse } from '@/lib/api';
 
 interface NSRFormProps {
   onSubmit: (input: NSRInput) => void;
@@ -17,6 +17,56 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
   const [oreTonnage, setOreTonnage] = useState<string>('20000');
   const [mineDilution, setMineDilution] = useState<string>('14');
   const [oreRecovery, setOreRecovery] = useState<string>('98');
+  
+  // Metal prices
+  const [cuPrice, setCuPrice] = useState<string>('');
+  const [auPrice, setAuPrice] = useState<string>('');
+  const [agPrice, setAgPrice] = useState<string>('');
+  const [priceSource, setPriceSource] = useState<string>('');
+  const [priceIsLive, setPriceIsLive] = useState<boolean>(false);
+  const [loadingPrices, setLoadingPrices] = useState<boolean>(true);
+
+  // Fetch live prices on mount
+  useEffect(() => {
+    const loadPrices = async () => {
+      try {
+        setLoadingPrices(true);
+        const response = await fetchMetalPrices();
+        setCuPrice(response.prices.cu.value.toString());
+        setAuPrice(response.prices.au.value.toString());
+        setAgPrice(response.prices.ag.value.toString());
+        setPriceSource(response.metadata.source);
+        setPriceIsLive(response.metadata.is_live);
+      } catch (error) {
+        console.error('Failed to fetch prices:', error);
+        // Use defaults
+        setCuPrice('6.28');
+        setAuPrice('5360');
+        setAgPrice('116.39');
+        setPriceSource('default');
+        setPriceIsLive(false);
+      } finally {
+        setLoadingPrices(false);
+      }
+    };
+    loadPrices();
+  }, []);
+
+  const refreshPrices = async () => {
+    try {
+      setLoadingPrices(true);
+      const response = await fetchMetalPrices(true);
+      setCuPrice(response.prices.cu.value.toString());
+      setAuPrice(response.prices.au.value.toString());
+      setAgPrice(response.prices.ag.value.toString());
+      setPriceSource(response.metadata.source);
+      setPriceIsLive(response.metadata.is_live);
+    } catch (error) {
+      console.error('Failed to refresh prices:', error);
+    } finally {
+      setLoadingPrices(false);
+    }
+  };
 
   const handleMineChange = (newMine: MineName) => {
     setMine(newMine);
@@ -34,6 +84,9 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
       ore_tonnage: parseFloat(oreTonnage),
       mine_dilution: parseFloat(mineDilution) / 100,
       ore_recovery: parseFloat(oreRecovery) / 100,
+      cu_price: cuPrice ? parseFloat(cuPrice) : undefined,
+      au_price: auPrice ? parseFloat(auPrice) : undefined,
+      ag_price: agPrice ? parseFloat(agPrice) : undefined,
     });
   };
 
@@ -136,6 +189,89 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
                 required
               />
               <span className="absolute right-3 top-2 text-gray-500">g/t</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Metal Prices */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Preços dos Metais
+            </h2>
+            <p className="text-xs text-gray-500">
+              {loadingPrices ? 'Carregando...' : (
+                <>
+                  Fonte: <span className={priceIsLive ? 'text-green-600 font-medium' : 'text-gray-500'}>
+                    {priceSource === 'metalpriceapi' ? 'COMEX (tempo real)' : 
+                     priceSource === 'default' ? 'Valores padrão' : priceSource}
+                  </span>
+                  {priceIsLive && <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>}
+                </>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={refreshPrices}
+            disabled={loadingPrices}
+            className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
+          >
+            {loadingPrices ? 'Atualizando...' : 'Atualizar'}
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Cobre (Cu)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={cuPrice}
+                onChange={(e) => setCuPrice(e.target.value)}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
+                placeholder="..."
+              />
+              <span className="absolute right-3 top-2 text-gray-500">$/lb</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Ouro (Au)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={auPrice}
+                onChange={(e) => setAuPrice(e.target.value)}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
+                placeholder="..."
+              />
+              <span className="absolute right-3 top-2 text-gray-500">$/oz</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Prata (Ag)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={agPrice}
+                onChange={(e) => setAgPrice(e.target.value)}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
+                placeholder="..."
+              />
+              <span className="absolute right-3 top-2 text-gray-500">$/oz</span>
             </div>
           </div>
         </div>

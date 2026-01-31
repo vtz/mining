@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.api import health, compute
+from app.api import health, compute, prices
 
 settings = get_settings()
 
@@ -28,6 +28,7 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(compute.router, prefix="/api/v1", tags=["Compute"])
+app.include_router(prices.router, prefix="/api/v1", tags=["Prices"])
 
 
 @app.get("/")

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.nsr_engine.calculations import compute_nsr_complete
 from app.nsr_engine.models import NSRInput, NSRResult
+from app.services.metal_prices import get_metal_prices
 
 router = APIRouter()
 
@@ -74,6 +75,8 @@ async def compute_nsr(request: ComputeNSRRequest) -> NSRResult:
     This is a stateless computation endpoint that calculates NSR
     based on the provided ore grades, mine parameters, and commercial terms.
 
+    If metal prices are not provided, fetches real-time prices from COMEX.
+
     Returns a detailed breakdown including:
     - Concentrate price by metal
     - NSR by metal ($/t ore)
@@ -81,6 +84,20 @@ async def compute_nsr(request: ComputeNSRRequest) -> NSRResult:
     - Loss breakdown (dilution, recovery)
     """
     try:
+        # Fetch live prices if not provided
+        cu_price = request.cu_price
+        au_price = request.au_price
+        ag_price = request.ag_price
+
+        if cu_price is None or au_price is None or ag_price is None:
+            live_prices = await get_metal_prices()
+            if cu_price is None:
+                cu_price = live_prices.cu_price_per_lb
+            if au_price is None:
+                au_price = live_prices.au_price_per_oz
+            if ag_price is None:
+                ag_price = live_prices.ag_price_per_oz
+
         # Convert request to NSRInput
         nsr_input = NSRInput(
             mine=request.mine,
@@ -91,9 +108,9 @@ async def compute_nsr(request: ComputeNSRRequest) -> NSRResult:
             ore_tonnage=request.ore_tonnage,
             mine_dilution=request.mine_dilution,
             ore_recovery=request.ore_recovery,
-            cu_price=request.cu_price,
-            au_price=request.au_price,
-            ag_price=request.ag_price,
+            cu_price=cu_price,
+            au_price=au_price,
+            ag_price=ag_price,
             cu_payability=request.cu_payability,
             cu_tc=request.cu_tc,
             cu_rc=request.cu_rc,
