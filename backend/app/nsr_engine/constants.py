@@ -26,12 +26,15 @@ GPT_TO_FRACTION = 1e-6  # g/t = ppm for mass basis
 # Default Commercial Terms (Caraíba)
 # =============================================================================
 
-# Price Deck - Market prices
-# Note: Excel shows 9149 which calculates to ~$6.10/lb for the formulas to match
-# Using market price as default; users can adjust
-DEFAULT_CU_PRICE_PER_LB = 4.15  # $/lb (market price ~2024)
-DEFAULT_AU_PRICE_PER_OZ = 2400.0  # $/oz
-DEFAULT_AG_PRICE_PER_OZ = 29.0  # $/oz
+# Price Deck - COMEX Market Prices (January 2026)
+# Source: COMEX Futures (comexlive.org), updated 2026-01-29
+# Reference: Using COMEX as primary source for consistency with industry standards
+DEFAULT_CU_PRICE_PER_LB = 6.28  # $/lb (COMEX Jan 2026)
+DEFAULT_AU_PRICE_PER_OZ = 5360.0  # $/oz (COMEX Jan 2026)
+DEFAULT_AG_PRICE_PER_OZ = 116.39  # $/oz (COMEX Jan 2026)
+
+# Historical reference (Excel file used these older prices):
+# Cu: ~$4.15/lb, Au: $2,400/oz, Ag: $29/oz
 
 # Copper Terms
 DEFAULT_CU_DISCOUNT = 0.0335  # 3.35%
