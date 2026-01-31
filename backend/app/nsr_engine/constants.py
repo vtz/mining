@@ -26,8 +26,10 @@ GPT_TO_FRACTION = 1e-6  # g/t = ppm for mass basis
 # Default Commercial Terms (Caraíba)
 # =============================================================================
 
-# Price Deck - Mineral Resources (default)
-DEFAULT_CU_PRICE_PER_LB = 4.15  # $/lb (9149 cents = $91.49? verificar)
+# Price Deck - Market prices
+# Note: Excel shows 9149 which calculates to ~$6.10/lb for the formulas to match
+# Using market price as default; users can adjust
+DEFAULT_CU_PRICE_PER_LB = 4.15  # $/lb (market price ~2024)
 DEFAULT_AU_PRICE_PER_OZ = 2400.0  # $/oz
 DEFAULT_AG_PRICE_PER_OZ = 29.0  # $/oz
 
@@ -49,8 +51,8 @@ DEFAULT_AU_RC = 4.00  # $/oz Au payable
 DEFAULT_AG_PAYABILITY = 0.90  # 90%
 DEFAULT_AG_RC = 0.35  # $/oz Ag payable
 
-# Concentrate Grade
-DEFAULT_CU_CONC_GRADE = 28.0  # % Cu in concentrate (estimate, needs verification)
+# Concentrate Grade (Base Case from Excel)
+DEFAULT_CU_CONC_GRADE = 33.5  # % Cu in concentrate (Base Case)
 
 # Royalties
 DEFAULT_CFEM_RATE = 0.02  # 2%
@@ -102,6 +104,6 @@ RECOVERY_PARAMS = {
 # Default recovery if area not found
 DEFAULT_RECOVERY_PARAMS = {"a": 3.0, "b": 90.0, "fixed": None}
 
-# Default Au/Ag recovery (used when not area-specific)
-DEFAULT_AU_RECOVERY = 0.90  # 90%
-DEFAULT_AG_RECOVERY = 0.90  # 90%
+# Default Au/Ag recovery (Base Case from Excel)
+DEFAULT_AU_RECOVERY = 0.60  # 60% (Base Case)
+DEFAULT_AG_RECOVERY = 0.60  # 60% (Base Case)

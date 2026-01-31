@@ -154,28 +154,97 @@ export default function NSRResult({ result }: NSRResultProps) {
         </div>
       </div>
 
-      {/* Losses Breakdown */}
+      {/* NSR Cascade / Waterfall */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Análise de Perdas ($/t ore)
+          Cascata de NSR ($/t ore)
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-            <p className="text-sm text-green-800">NSR Mineral Resources</p>
-            <p className="text-2xl font-bold text-green-700">
+        
+        {/* Waterfall visualization */}
+        <div className="space-y-3">
+          {/* Mineral Resources */}
+          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+            <div>
+              <p className="text-sm text-green-800 font-medium">Mineral Resources</p>
+              <p className="text-xs text-green-600">Valor teórico máximo</p>
+            </div>
+            <p className="text-xl font-bold text-green-700">
               {formatCurrency(result.nsr_mineral_resources)}
             </p>
           </div>
-          <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <p className="text-sm text-yellow-800">Perda por Diluição</p>
-            <p className="text-2xl font-bold text-yellow-700">
-              -{formatCurrency(result.dilution_loss)}
+
+          {/* Arrow and Loss - Dilution */}
+          <div className="flex items-center pl-6">
+            <div className="flex-1 border-l-2 border-dashed border-yellow-400 pl-4">
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-yellow-700">
+                  − Diluição & Ore Recovery
+                </span>
+                <span className="text-sm font-medium text-yellow-700">
+                  -{formatCurrency(result.dilution_loss)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Mine */}
+          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+            <div>
+              <p className="text-sm text-blue-800 font-medium">NSR Mine</p>
+              <p className="text-xs text-blue-600">Após fatores de mina</p>
+            </div>
+            <p className="text-xl font-bold text-blue-700">
+              {formatCurrency(result.nsr_mine)}
             </p>
           </div>
-          <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-            <p className="text-sm text-red-800">Perda por Recuperação</p>
-            <p className="text-2xl font-bold text-red-700">
-              -{formatCurrency(result.recovery_loss)}
+
+          {/* Arrow and Loss - Recovery */}
+          <div className="flex items-center pl-6">
+            <div className="flex-1 border-l-2 border-dashed border-orange-400 pl-4">
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-orange-700">
+                  − Recuperação Metalúrgica
+                </span>
+                <span className="text-sm font-medium text-orange-700">
+                  -{formatCurrency(result.recovery_loss)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Processing */}
+          <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border-l-4 border-purple-500">
+            <div>
+              <p className="text-sm text-purple-800 font-medium">NSR Processing</p>
+              <p className="text-xs text-purple-600">Após processamento</p>
+            </div>
+            <p className="text-xl font-bold text-purple-700">
+              {formatCurrency(result.nsr_processing)}
+            </p>
+          </div>
+
+          {/* Arrow and Loss - Selling Costs */}
+          <div className="flex items-center pl-6">
+            <div className="flex-1 border-l-2 border-dashed border-red-400 pl-4">
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-red-700">
+                  − Selling Costs (TC, RC, Freight)
+                </span>
+                <span className="text-sm font-medium text-red-700">
+                  -{formatCurrency(result.nsr_processing - result.nsr_per_tonne)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Final NSR */}
+          <div className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+            <div>
+              <p className="text-sm text-gray-200 font-medium">NSR Final</p>
+              <p className="text-xs text-gray-400">Valor líquido</p>
+            </div>
+            <p className="text-xl font-bold text-white">
+              {formatCurrency(result.nsr_per_tonne)}
             </p>
           </div>
         </div>
