@@ -93,11 +93,32 @@ export interface MetalPricesResponse {
     source: string;
     timestamp: number;
     is_live: boolean;
+    extra?: Record<string, unknown>;
   };
 }
 
-export async function fetchMetalPrices(refresh: boolean = false): Promise<MetalPricesResponse> {
+export interface PriceProvider {
+  name: string;
+  display_name: string;
+  description: string;
+  requires_api_key: boolean;
+  is_available: boolean;
+  is_default: boolean;
+}
+
+export interface ProvidersResponse {
+  providers: PriceProvider[];
+  count: number;
+}
+
+export async function fetchMetalPrices(
+  provider?: string,
+  refresh: boolean = false
+): Promise<MetalPricesResponse> {
   const url = new URL(`${API_BASE_URL}/api/v1/prices`);
+  if (provider) {
+    url.searchParams.set('provider', provider);
+  }
   if (refresh) {
     url.searchParams.set('refresh', 'true');
   }
@@ -109,6 +130,49 @@ export async function fetchMetalPrices(refresh: boolean = false): Promise<MetalP
   }
   
   return response.json();
+}
+
+export async function fetchPriceProviders(): Promise<ProvidersResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/prices/providers`);
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch price providers');
+  }
+  
+  return response.json();
+}
+
+export async function setManualPrices(
+  cuPrice: number,
+  auPrice: number,
+  agPrice: number,
+  note?: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/prices/manual`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cu_price: cuPrice,
+      au_price: auPrice,
+      ag_price: agPrice,
+      note: note || '',
+    }),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to set manual prices');
+  }
+}
+
+export async function setDefaultProvider(providerName: string): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/prices/providers/${providerName}/default`,
+    { method: 'POST' }
+  );
+  
+  if (!response.ok) {
+    throw new Error('Failed to set default provider');
+  }
 }
 
 // Mine and area data (from Caraíba)

@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MINES_DATA, MineName, NSRInput, fetchMetalPrices, MetalPricesResponse } from '@/lib/api';
+import { 
+  MINES_DATA, 
+  MineName, 
+  NSRInput, 
+  fetchMetalPrices, 
+  fetchPriceProviders,
+  setManualPrices,
+  PriceProvider 
+} from '@/lib/api';
 
 interface NSRFormProps {
   onSubmit: (input: NSRInput) => void;
@@ -25,20 +33,37 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
   const [priceSource, setPriceSource] = useState<string>('');
   const [priceIsLive, setPriceIsLive] = useState<boolean>(false);
   const [loadingPrices, setLoadingPrices] = useState<boolean>(true);
+  
+  // Price providers
+  const [providers, setProviders] = useState<PriceProvider[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [isManualMode, setIsManualMode] = useState<boolean>(false);
 
-  // Fetch live prices on mount
+  // Fetch providers and prices on mount
   useEffect(() => {
-    const loadPrices = async () => {
+    const loadData = async () => {
       try {
         setLoadingPrices(true);
-        const response = await fetchMetalPrices();
-        setCuPrice(response.prices.cu.value.toString());
-        setAuPrice(response.prices.au.value.toString());
-        setAgPrice(response.prices.ag.value.toString());
-        setPriceSource(response.metadata.source);
-        setPriceIsLive(response.metadata.is_live);
+        
+        // Load providers
+        const providersResponse = await fetchPriceProviders();
+        setProviders(providersResponse.providers);
+        
+        // Find default provider
+        const defaultProvider = providersResponse.providers.find(p => p.is_default);
+        if (defaultProvider) {
+          setSelectedProvider(defaultProvider.name);
+        }
+        
+        // Load prices
+        const pricesResponse = await fetchMetalPrices();
+        setCuPrice(pricesResponse.prices.cu.value.toString());
+        setAuPrice(pricesResponse.prices.au.value.toString());
+        setAgPrice(pricesResponse.prices.ag.value.toString());
+        setPriceSource(pricesResponse.metadata.source);
+        setPriceIsLive(pricesResponse.metadata.is_live);
       } catch (error) {
-        console.error('Failed to fetch prices:', error);
+        console.error('Failed to fetch data:', error);
         // Use defaults
         setCuPrice('6.28');
         setAuPrice('5360');
@@ -49,13 +74,40 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
         setLoadingPrices(false);
       }
     };
-    loadPrices();
+    loadData();
   }, []);
 
+  const handleProviderChange = async (providerName: string) => {
+    setSelectedProvider(providerName);
+    setIsManualMode(providerName === 'manual');
+    
+    if (providerName !== 'manual') {
+      try {
+        setLoadingPrices(true);
+        const response = await fetchMetalPrices(providerName);
+        setCuPrice(response.prices.cu.value.toString());
+        setAuPrice(response.prices.au.value.toString());
+        setAgPrice(response.prices.ag.value.toString());
+        setPriceSource(response.metadata.source);
+        setPriceIsLive(response.metadata.is_live);
+      } catch (error) {
+        console.error('Failed to fetch prices:', error);
+      } finally {
+        setLoadingPrices(false);
+      }
+    } else {
+      // Manual mode - keep current prices editable
+      setPriceSource('manual');
+      setPriceIsLive(false);
+    }
+  };
+
   const refreshPrices = async () => {
+    if (isManualMode) return;
+    
     try {
       setLoadingPrices(true);
-      const response = await fetchMetalPrices(true);
+      const response = await fetchMetalPrices(selectedProvider, true);
       setCuPrice(response.prices.cu.value.toString());
       setAuPrice(response.prices.au.value.toString());
       setAgPrice(response.prices.ag.value.toString());
@@ -65,6 +117,20 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
       console.error('Failed to refresh prices:', error);
     } finally {
       setLoadingPrices(false);
+    }
+  };
+
+  const saveManualPrices = async () => {
+    try {
+      await setManualPrices(
+        parseFloat(cuPrice),
+        parseFloat(auPrice),
+        parseFloat(agPrice),
+        'Set via UI'
+      );
+      setPriceSource('manual');
+    } catch (error) {
+      console.error('Failed to save manual prices:', error);
     }
   };
 
@@ -206,6 +272,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
                 <>
                   Fonte: <span className={priceIsLive ? 'text-green-600 font-medium' : 'text-gray-500'}>
                     {priceSource === 'metalpriceapi' ? 'COMEX (tempo real)' : 
+                     priceSource === 'manual' ? 'Manual' :
                      priceSource === 'default' ? 'Valores padrão' : priceSource}
                   </span>
                   {priceIsLive && <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>}
@@ -213,35 +280,87 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
               )}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={refreshPrices}
-            disabled={loadingPrices}
-            className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
-          >
-            {loadingPrices ? 'Atualizando...' : 'Atualizar'}
-          </button>
+          <div className="flex items-center gap-2">
+            {isManualMode && (
+              <button
+                type="button"
+                onClick={saveManualPrices}
+                className="text-sm text-green-600 hover:text-green-800"
+              >
+                Salvar
+              </button>
+            )}
+            {!isManualMode && (
+              <button
+                type="button"
+                onClick={refreshPrices}
+                disabled={loadingPrices}
+                className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
+              >
+                {loadingPrices ? 'Atualizando...' : 'Atualizar'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Provider Selection */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Fonte de Preços
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {providers.map((provider) => (
+              <button
+                key={provider.name}
+                type="button"
+                onClick={() => handleProviderChange(provider.name)}
+                disabled={!provider.is_available && provider.name !== 'manual'}
+                className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                  selectedProvider === provider.name
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : provider.is_available || provider.name === 'manual'
+                    ? 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                    : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                }`}
+                title={provider.description}
+              >
+                {provider.display_name}
+                {!provider.is_available && provider.name !== 'manual' && (
+                  <span className="ml-1 text-xs">(sem API key)</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
         
         {/* Price Disclaimer */}
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-xs text-amber-800">
-            <strong>Disclaimer:</strong> Preços obtidos via{' '}
-            <a 
-              href="https://www.cmegroup.com/markets/metals.html" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="underline hover:text-amber-900"
-            >
-              COMEX (CME Group)
-            </a>
-            , o principal mercado de futuros de metais dos EUA. Os valores representam 
-            cotações de contratos futuros e podem diferir dos preços spot. 
-            Para decisões financeiras, consulte fontes oficiais e profissionais qualificados.
-            {!priceIsLive && priceSource === 'default' && (
-              <span className="block mt-1 text-amber-700">
-                Preços padrão de Janeiro/2026. Configure a API key para dados em tempo real.
-              </span>
+            {isManualMode ? (
+              <>
+                <strong>Modo Manual:</strong> Insira os preços desejados nos campos abaixo. 
+                Clique em &quot;Salvar&quot; para armazenar os valores no servidor.
+              </>
+            ) : (
+              <>
+                <strong>Disclaimer:</strong> Preços obtidos via{' '}
+                <a 
+                  href="https://www.cmegroup.com/markets/metals.html" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="underline hover:text-amber-900"
+                >
+                  COMEX (CME Group)
+                </a>
+                , o principal mercado de futuros de metais dos EUA. Os valores representam 
+                cotações de contratos futuros e podem diferir dos preços spot. 
+                Para decisões financeiras, consulte fontes oficiais e profissionais qualificados.
+                {!priceIsLive && priceSource === 'default' && (
+                  <span className="block mt-1 text-amber-700">
+                    Preços padrão de Janeiro/2026. Configure a API key para dados em tempo real.
+                  </span>
+                )}
+              </>
             )}
           </p>
         </div>
