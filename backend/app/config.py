@@ -1,12 +1,17 @@
 """Application configuration."""
 
 from typing import List
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
     # Application
     app_name: str = "NSR Calculator"
@@ -24,10 +29,6 @@ class Settings(BaseSettings):
 
     # Metal Price API (get free key at metalpriceapi.com)
     metal_price_api_key: str = ""
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 @lru_cache

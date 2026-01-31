@@ -175,6 +175,66 @@ export async function setDefaultProvider(providerName: string): Promise<void> {
   }
 }
 
+// Scenarios
+export interface ScenarioResult {
+  name: string;
+  variation: number;
+  cu_price: number;
+  au_price: number;
+  ag_price: number;
+  result: NSRResult;
+}
+
+export interface ScenariosResponse {
+  base: NSRResult;
+  scenarios: ScenarioResult[];
+}
+
+export async function computeScenarios(
+  input: NSRInput, 
+  variation: number = 10
+): Promise<ScenariosResponse> {
+  const url = new URL(`${API_BASE_URL}/api/v1/compute/scenarios`);
+  url.searchParams.set('variation', variation.toString());
+  
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to compute scenarios');
+  }
+
+  return response.json();
+}
+
+// Export CSV
+export async function exportResultCSV(result: NSRResult & NSRInput): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/export/csv`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(result),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to export CSV');
+  }
+
+  // Download the file
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nsr_result_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}
+
 // Mine and area data (from Caraíba)
 export const MINES_DATA = {
   'Vermelhos UG': ['Vermelhos Sul', 'UG03', 'N5/UG04', 'N8 - UG'],

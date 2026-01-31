@@ -105,8 +105,8 @@ class NSRResult(BaseModel):
     formula_applied: str = Field(..., description="Reference to formula documentation")
     inputs_used: Dict[str, Any] = Field(..., description="All inputs used in calculation")
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "conc_price_cu": 2824.68,
                 "conc_price_au": 244.76,
@@ -132,3 +132,4 @@ class NSRResult(BaseModel):
                 "inputs_used": {},
             }
         }
+    }

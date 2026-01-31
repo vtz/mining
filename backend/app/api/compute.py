@@ -1,6 +1,6 @@
 """NSR computation endpoints."""
 
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -10,6 +10,22 @@ from app.nsr_engine.models import NSRInput, NSRResult
 from app.services.metal_prices import get_metal_prices
 
 router = APIRouter()
+
+
+class ScenarioResult(BaseModel):
+    """Result for a single scenario."""
+    name: str
+    variation: float
+    cu_price: float
+    au_price: float
+    ag_price: float
+    result: NSRResult
+
+
+class ScenariosResponse(BaseModel):
+    """Response containing multiple scenarios."""
+    base: NSRResult
+    scenarios: List[ScenarioResult]
 
 
 class ComputeNSRRequest(BaseModel):
@@ -52,8 +68,8 @@ class ComputeNSRRequest(BaseModel):
     cu_rc: Optional[float] = Field(default=None, ge=0, description="Refining charge Cu ($/lb)")
     cu_freight: Optional[float] = Field(default=None, ge=0, description="Freight ($/dmt)")
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "mine": "Vermelhos UG",
                 "area": "Vermelhos Sul",
@@ -65,6 +81,7 @@ class ComputeNSRRequest(BaseModel):
                 "ore_recovery": 0.98,
             }
         }
+    }
 
 
 @router.post("/compute/nsr", response_model=NSRResult)
@@ -120,6 +137,112 @@ async def compute_nsr(request: ComputeNSRRequest) -> NSRResult:
         # Compute NSR
         result = compute_nsr_complete(nsr_input)
         return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Computation error: {str(e)}")
+
+
+@router.post("/compute/scenarios", response_model=ScenariosResponse)
+async def compute_scenarios(
+    request: ComputeNSRRequest,
+    variation: float = 10.0
+) -> ScenariosResponse:
+    """
+    Compute NSR scenarios with price variations.
+    
+    Generates three scenarios:
+    - Downside: prices reduced by variation %
+    - Base: current prices
+    - Upside: prices increased by variation %
+    
+    Args:
+        request: Base NSR computation parameters
+        variation: Percentage variation for downside/upside (default 10%)
+    
+    Returns:
+        Base result and list of scenario results
+    """
+    try:
+        # Fetch live prices if not provided
+        cu_price = request.cu_price
+        au_price = request.au_price
+        ag_price = request.ag_price
+
+        if cu_price is None or au_price is None or ag_price is None:
+            live_prices = await get_metal_prices()
+            if cu_price is None:
+                cu_price = live_prices.cu_price_per_lb
+            if au_price is None:
+                au_price = live_prices.au_price_per_oz
+            if ag_price is None:
+                ag_price = live_prices.ag_price_per_oz
+
+        # Calculate base case
+        base_input = NSRInput(
+            mine=request.mine,
+            area=request.area,
+            cu_grade=request.cu_grade,
+            au_grade=request.au_grade,
+            ag_grade=request.ag_grade,
+            ore_tonnage=request.ore_tonnage,
+            mine_dilution=request.mine_dilution,
+            ore_recovery=request.ore_recovery,
+            cu_price=cu_price,
+            au_price=au_price,
+            ag_price=ag_price,
+            cu_payability=request.cu_payability,
+            cu_tc=request.cu_tc,
+            cu_rc=request.cu_rc,
+            cu_freight=request.cu_freight,
+        )
+        base_result = compute_nsr_complete(base_input)
+
+        # Define scenarios
+        scenario_configs = [
+            ("Downside", -variation),
+            ("Base", 0.0),
+            ("Upside", variation),
+        ]
+
+        scenarios = []
+        for name, var in scenario_configs:
+            factor = 1 + (var / 100)
+            
+            scenario_input = NSRInput(
+                mine=request.mine,
+                area=request.area,
+                cu_grade=request.cu_grade,
+                au_grade=request.au_grade,
+                ag_grade=request.ag_grade,
+                ore_tonnage=request.ore_tonnage,
+                mine_dilution=request.mine_dilution,
+                ore_recovery=request.ore_recovery,
+                cu_price=cu_price * factor,
+                au_price=au_price * factor,
+                ag_price=ag_price * factor,
+                cu_payability=request.cu_payability,
+                cu_tc=request.cu_tc,
+                cu_rc=request.cu_rc,
+                cu_freight=request.cu_freight,
+            )
+            
+            result = compute_nsr_complete(scenario_input)
+            
+            scenarios.append(ScenarioResult(
+                name=name,
+                variation=var,
+                cu_price=cu_price * factor,
+                au_price=au_price * factor,
+                ag_price=ag_price * factor,
+                result=result,
+            ))
+
+        return ScenariosResponse(
+            base=base_result,
+            scenarios=scenarios,
+        )
 
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

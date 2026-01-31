@@ -1,13 +1,13 @@
 # Golden Test Case: Vermelhos Sul
 # Validated against NSR Caraíba V.1 Excel spreadsheet
-# Date: 2026-01-28
+# Date: 2026-01-30
 
 name: "Vermelhos Sul - Base Case"
 description: |
   Basic copper calculation for Vermelhos Sul area.
   This is the primary validation case from the Excel spreadsheet.
 
-validated_date: "2026-01-28"
+validated_date: "2026-01-30"
 validated_by: "System"
 source: "NSR Caraíba - V.1_open.xlsm"
 
@@ -21,28 +21,28 @@ inputs:
   mine_dilution: 0.14
   ore_recovery: 0.98
 
-# Expected outputs - ranges based on default prices ($4.15/lb Cu)
-# These will differ from Excel which uses different price assumptions
+# Expected outputs - ranges based on COMEX prices (Jan 2026)
+# Cu: $6.28/lb, Au: $5360/oz, Ag: $116.39/oz
 expected:
-  # Concentrate prices ($/t conc) - for $4.15/lb Cu
-  conc_price_cu_min: 1000
-  conc_price_cu_max: 1500
-  conc_price_au_min: 200
-  conc_price_au_max: 400
-  conc_price_ag_min: 20
-  conc_price_ag_max: 60
-  conc_price_total_min: 1300
-  conc_price_total_max: 1800
+  # Concentrate prices ($/t conc)
+  conc_price_cu_min: 2500
+  conc_price_cu_max: 3500
+  conc_price_au_min: 400
+  conc_price_au_max: 700
+  conc_price_ag_min: 80
+  conc_price_ag_max: 180
+  conc_price_total_min: 3000
+  conc_price_total_max: 4500
 
-  # NSR per tonne ($/t ore) - for default prices
-  nsr_cu_min: 40
-  nsr_cu_max: 80
-  nsr_au_min: 10
-  nsr_au_max: 20
-  nsr_ag_min: 0.5
-  nsr_ag_max: 5
-  nsr_per_tonne_min: 50
-  nsr_per_tonne_max: 100
+  # NSR per tonne ($/t ore)
+  nsr_cu_min: 100
+  nsr_cu_max: 150
+  nsr_au_min: 15
+  nsr_au_max: 30
+  nsr_ag_min: 2
+  nsr_ag_max: 10
+  nsr_per_tonne_min: 120
+  nsr_per_tonne_max: 180
 
   # Recovery should match formula: 2.8286 × 1.4 + 92.584 = 96.54%
   cu_recovery: 0.9654

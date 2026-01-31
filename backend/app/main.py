@@ -4,7 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.api import health, compute, prices
+from app.api import health, compute, prices, export
+from app.api.errors import setup_error_handlers
 
 settings = get_settings()
 
@@ -15,6 +16,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Setup error handlers
+setup_error_handlers(app)
 
 # CORS middleware
 app.add_middleware(
@@ -29,6 +33,7 @@ app.add_middleware(
 app.include_router(health.router, tags=["Health"])
 app.include_router(compute.router, prefix="/api/v1", tags=["Compute"])
 app.include_router(prices.router, prefix="/api/v1", tags=["Prices"])
+app.include_router(export.router, prefix="/api/v1", tags=["Export"])
 
 
 @app.get("/")
