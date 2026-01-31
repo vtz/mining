@@ -12,7 +12,7 @@ Plataforma web para cálculo e análise de NSR (Net Smelter Return), substituind
 cd backend
 
 # Create virtual environment
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 
 # Install dependencies
@@ -25,11 +25,28 @@ uvicorn app.main:app --reload
 API disponível em: http://localhost:8000
 Documentação: http://localhost:8000/docs
 
+### Frontend (Web App)
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+```
+
+Frontend disponível em: http://localhost:3000
+
 ### Com Docker
 
 ```bash
 docker compose up
 ```
+
+Backend: http://localhost:8000
+Frontend: http://localhost:3000
 
 ## Estrutura do Projeto
 
