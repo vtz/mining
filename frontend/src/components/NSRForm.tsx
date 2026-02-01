@@ -1,24 +1,65 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { 
-  MINES_DATA, 
-  MineName, 
+  MINES_DATA_FALLBACK, 
   NSRInput, 
   fetchMetalPrices, 
   fetchPriceProviders,
   setManualPrices,
-  PriceProvider 
+  PriceProvider,
+  fetchMines,
+  buildMinesData,
+  Mine,
 } from '@/lib/api';
 
 interface NSRFormProps {
-  onSubmit: (input: NSRInput) => void;
+  onSubmit: (input: NSRInput, primaryMetal: string) => void;
   isLoading: boolean;
 }
 
+// Determine which metals to show based on primary metal
+function getMetalsForMine(primaryMetal: string): { cu: boolean; au: boolean; ag: boolean; isImplemented: boolean } {
+  switch (primaryMetal) {
+    case 'Au': // Gold mine - show Au, maybe Ag
+      return { cu: false, au: true, ag: true, isImplemented: false };
+    case 'Ag': // Silver mine
+      return { cu: false, au: true, ag: true, isImplemented: false };
+    case 'Ni': // Nickel mine - show Ni as Cu placeholder for now (not fully implemented)
+      return { cu: true, au: false, ag: false, isImplemented: false };
+    case 'Zn': // Zinc mine
+      return { cu: true, au: false, ag: true, isImplemented: false };
+    case 'Fe': // Iron mine
+      return { cu: true, au: false, ag: false, isImplemented: false };
+    case 'Cu': // Copper mine - show all (Cu is primary, Au/Ag as byproducts)
+      return { cu: true, au: true, ag: true, isImplemented: true };
+    default:
+      return { cu: true, au: true, ag: true, isImplemented: true };
+  }
+}
+
+// Get metal display name for non-copper primary metals
+function getMetalDisplayName(primaryMetal: string): string {
+  switch (primaryMetal) {
+    case 'Ni': return 'Níquel (Ni)';
+    case 'Zn': return 'Zinco (Zn)';
+    case 'Fe': return 'Ferro (Fe)';
+    default: return 'Cobre (Cu)';
+  }
+}
+
 export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
-  const [mine, setMine] = useState<MineName>('Vermelhos UG');
-  const [area, setArea] = useState<string>('Vermelhos Sul');
+  const t = useTranslations('form');
+  
+  // Mines data - dynamically loaded
+  const [minesData, setMinesData] = useState<Record<string, string[]>>(MINES_DATA_FALLBACK);
+  const [minesList, setMinesList] = useState<Mine[]>([]);
+  const [loadingMines, setLoadingMines] = useState<boolean>(true);
+  
+  const [mine, setMine] = useState<string>('');
+  const [area, setArea] = useState<string>('');
+  const [primaryMetal, setPrimaryMetal] = useState<string>('Cu');
   const [cuGrade, setCuGrade] = useState<string>('1.4');
   const [auGrade, setAuGrade] = useState<string>('0.23');
   const [agGrade, setAgGrade] = useState<string>('2.33');
@@ -38,6 +79,48 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
   const [providers, setProviders] = useState<PriceProvider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [isManualMode, setIsManualMode] = useState<boolean>(false);
+
+  // Fetch mines on mount
+  useEffect(() => {
+    const loadMines = async () => {
+      try {
+        setLoadingMines(true);
+        const response = await fetchMines();
+        setMinesList(response.mines);
+        const dynamicMinesData = buildMinesData(response.mines);
+        
+        // Use dynamic data if we got mines, otherwise fall back
+        if (Object.keys(dynamicMinesData).length > 0) {
+          setMinesData(dynamicMinesData);
+          // Set initial mine and area from dynamic data
+          const firstMine = Object.keys(dynamicMinesData)[0];
+          setMine(firstMine);
+          setArea(dynamicMinesData[firstMine][0]);
+          // Set primary metal from first mine
+          const firstMineData = response.mines.find((m: Mine) => m.name === firstMine);
+          if (firstMineData) {
+            setPrimaryMetal(firstMineData.primary_metal);
+          }
+        } else {
+          // Fall back to static data
+          setMinesData(MINES_DATA_FALLBACK);
+          const firstMine = Object.keys(MINES_DATA_FALLBACK)[0];
+          setMine(firstMine);
+          setArea(MINES_DATA_FALLBACK[firstMine][0]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch mines:', error);
+        // Fall back to static data
+        setMinesData(MINES_DATA_FALLBACK);
+        const firstMine = Object.keys(MINES_DATA_FALLBACK)[0];
+        setMine(firstMine);
+        setArea(MINES_DATA_FALLBACK[firstMine][0]);
+      } finally {
+        setLoadingMines(false);
+      }
+    };
+    loadMines();
+  }, []);
 
   // Fetch providers and prices on mount
   useEffect(() => {
@@ -134,26 +217,36 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
     }
   };
 
-  const handleMineChange = (newMine: MineName) => {
+  const handleMineChange = (newMine: string) => {
     setMine(newMine);
-    setArea(MINES_DATA[newMine][0]);
+    if (minesData[newMine] && minesData[newMine].length > 0) {
+      setArea(minesData[newMine][0]);
+    }
+    // Update primary metal based on selected mine
+    const selectedMine = minesList.find((m) => m.name === newMine);
+    if (selectedMine) {
+      setPrimaryMetal(selectedMine.primary_metal);
+    }
   };
+
+  // Get metals visibility based on current mine
+  const metalsToShow = getMetalsForMine(primaryMetal);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       mine,
       area,
-      cu_grade: parseFloat(cuGrade),
-      au_grade: parseFloat(auGrade),
-      ag_grade: parseFloat(agGrade),
+      cu_grade: metalsToShow.cu ? parseFloat(cuGrade) : 0,
+      au_grade: metalsToShow.au ? parseFloat(auGrade) : 0,
+      ag_grade: metalsToShow.ag ? parseFloat(agGrade) : 0,
       ore_tonnage: parseFloat(oreTonnage),
       mine_dilution: parseFloat(mineDilution) / 100,
       ore_recovery: parseFloat(oreRecovery) / 100,
       cu_price: cuPrice ? parseFloat(cuPrice) : undefined,
       au_price: auPrice ? parseFloat(auPrice) : undefined,
       ag_price: agPrice ? parseFloat(agPrice) : undefined,
-    });
+    }, primaryMetal);
   };
 
   return (
@@ -161,39 +254,49 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
       {/* Mine/Area Selection */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Seleção de Mina / Área
+          {t('mineSelection')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Mina
+              {t('mine')}
             </label>
             <select
               value={mine}
-              onChange={(e) => handleMineChange(e.target.value as MineName)}
+              onChange={(e) => handleMineChange(e.target.value)}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
+              disabled={loadingMines}
             >
-              {Object.keys(MINES_DATA).map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
+              {loadingMines ? (
+                <option value="">Carregando...</option>
+              ) : (
+                Object.keys(minesData).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))
+              )}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Área
+              {t('area')}
             </label>
             <select
               value={area}
               onChange={(e) => setArea(e.target.value)}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
+              disabled={loadingMines}
             >
-              {MINES_DATA[mine].map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
+              {loadingMines ? (
+                <option value="">Carregando...</option>
+              ) : (
+                (minesData[mine] || []).map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))
+              )}
             </select>
           </div>
         </div>
@@ -202,61 +305,84 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
       {/* Head Grades */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Teores de Cabeça
+          {t('headGrades')}
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cobre (Cu)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={cuGrade}
-                onChange={(e) => setCuGrade(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8 text-gray-900"
-                required
-              />
-              <span className="absolute right-3 top-2 text-gray-500">%</span>
-            </div>
+        
+        {/* Warning for non-implemented metals */}
+        {!metalsToShow.isImplemented && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800">
+              <span className="font-medium">Modo Demo:</span> Cálculo NSR para {getMetalDisplayName(primaryMetal)} ainda não está totalmente implementado. 
+              Os valores são simulados usando parâmetros de cobre.
+            </p>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ouro (Au)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={auGrade}
-                onChange={(e) => setAuGrade(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                required
-              />
-              <span className="absolute right-3 top-2 text-gray-500">g/t</span>
+        )}
+        
+        <div className={`grid grid-cols-1 gap-4 ${
+          [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 3 
+            ? 'md:grid-cols-3' 
+            : [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 2 
+              ? 'md:grid-cols-2' 
+              : ''
+        }`}>
+          {metalsToShow.cu && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {primaryMetal === 'Cu' ? t('copper') : getMetalDisplayName(primaryMetal)}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={cuGrade}
+                  onChange={(e) => setCuGrade(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8 text-gray-900"
+                  required
+                />
+                <span className="absolute right-3 top-2 text-gray-500">%</span>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Prata (Ag)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={agGrade}
-                onChange={(e) => setAgGrade(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                required
-              />
-              <span className="absolute right-3 top-2 text-gray-500">g/t</span>
+          )}
+          {metalsToShow.au && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('gold')}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={auGrade}
+                  onChange={(e) => setAuGrade(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
+                  required
+                />
+                <span className="absolute right-3 top-2 text-gray-500">g/t</span>
+              </div>
             </div>
-          </div>
+          )}
+          {metalsToShow.ag && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('silver')}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={agGrade}
+                  onChange={(e) => setAgGrade(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
+                  required
+                />
+                <span className="absolute right-3 top-2 text-gray-500">g/t</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -265,15 +391,15 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">
-              Preços dos Metais
+              {t('metalPrices')}
             </h2>
             <p className="text-xs text-gray-500">
-              {loadingPrices ? 'Carregando...' : (
+              {loadingPrices ? t('refreshing') : (
                 <>
-                  Fonte: <span className={priceIsLive ? 'text-green-600 font-medium' : 'text-gray-500'}>
-                    {priceSource === 'metalpriceapi' ? 'COMEX (tempo real)' : 
-                     priceSource === 'manual' ? 'Manual' :
-                     priceSource === 'default' ? 'Valores padrão' : priceSource}
+                  {t('source')}: <span className={priceIsLive ? 'text-green-600 font-medium' : 'text-gray-500'}>
+                    {priceSource === 'metalpriceapi' ? t('comexRealtime') : 
+                     priceSource === 'manual' ? t('manual') :
+                     priceSource === 'default' ? t('defaultValues') : priceSource}
                   </span>
                   {priceIsLive && <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>}
                 </>
@@ -287,7 +413,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
                 onClick={saveManualPrices}
                 className="text-sm text-green-600 hover:text-green-800"
               >
-                Salvar
+                {t('save', { ns: 'common' })}
               </button>
             )}
             {!isManualMode && (
@@ -297,7 +423,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
                 disabled={loadingPrices}
                 className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
               >
-                {loadingPrices ? 'Atualizando...' : 'Atualizar'}
+                {loadingPrices ? t('refreshing') : t('refresh')}
               </button>
             )}
           </div>
@@ -306,7 +432,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
         {/* Provider Selection */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Fonte de Preços
+            {t('priceSource')}
           </label>
           <div className="flex flex-wrap gap-2">
             {providers.map((provider) => (
@@ -326,7 +452,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
               >
                 {provider.display_name}
                 {!provider.is_available && provider.name !== 'manual' && (
-                  <span className="ml-1 text-xs">(sem API key)</span>
+                  <span className="ml-1 text-xs">{t('noApiKey')}</span>
                 )}
               </button>
             ))}
@@ -337,97 +463,95 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-xs text-amber-800">
             {isManualMode ? (
-              <>
-                <strong>Modo Manual:</strong> Insira os preços desejados nos campos abaixo. 
-                Clique em &quot;Salvar&quot; para armazenar os valores no servidor.
-              </>
+              <>{t('manualModeDescription')}</>
             ) : (
               <>
-                <strong>Disclaimer:</strong> Preços obtidos via{' '}
-                <a 
-                  href="https://www.cmegroup.com/markets/metals.html" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="underline hover:text-amber-900"
-                >
-                  COMEX (CME Group)
-                </a>
-                , o principal mercado de futuros de metais dos EUA. Os valores representam 
-                cotações de contratos futuros e podem diferir dos preços spot. 
-                Para decisões financeiras, consulte fontes oficiais e profissionais qualificados.
+                {t('priceDisclaimer')}
                 {!priceIsLive && priceSource === 'default' && (
                   <span className="block mt-1 text-amber-700">
-                    Preços padrão de Janeiro/2026. Configure a API key para dados em tempo real.
+                    {t('defaultPricesNotice')}
                   </span>
                 )}
               </>
             )}
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cobre (Cu)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={cuPrice}
-                onChange={(e) => setCuPrice(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                placeholder="..."
-              />
-              <span className="absolute right-3 top-2 text-gray-500">$/lb</span>
+        <div className={`grid grid-cols-1 gap-4 ${
+          [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 3 
+            ? 'md:grid-cols-3' 
+            : [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 2 
+              ? 'md:grid-cols-2' 
+              : ''
+        }`}>
+          {metalsToShow.cu && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {primaryMetal === 'Cu' ? t('copper') : getMetalDisplayName(primaryMetal)}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={cuPrice}
+                  onChange={(e) => setCuPrice(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
+                  placeholder="..."
+                />
+                <span className="absolute right-3 top-2 text-gray-500">$/lb</span>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ouro (Au)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="1"
-                min="0"
-                value={auPrice}
-                onChange={(e) => setAuPrice(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                placeholder="..."
-              />
-              <span className="absolute right-3 top-2 text-gray-500">$/oz</span>
+          )}
+          {metalsToShow.au && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('gold')}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={auPrice}
+                  onChange={(e) => setAuPrice(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
+                  placeholder="..."
+                />
+                <span className="absolute right-3 top-2 text-gray-500">$/oz</span>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Prata (Ag)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={agPrice}
-                onChange={(e) => setAgPrice(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                placeholder="..."
-              />
-              <span className="absolute right-3 top-2 text-gray-500">$/oz</span>
+          )}
+          {metalsToShow.ag && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('silver')}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={agPrice}
+                  onChange={(e) => setAgPrice(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
+                  placeholder="..."
+                />
+                <span className="absolute right-3 top-2 text-gray-500">$/oz</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Mine Parameters */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Parâmetros de Mina
+          {t('mineParameters')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tonelagem
+              {t('tonnage')}
             </label>
             <div className="relative">
               <input
@@ -444,7 +568,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Diluição
+              {t('dilution')}
             </label>
             <div className="relative">
               <input
@@ -462,7 +586,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Recuperação de Minério
+              {t('oreRecovery')}
             </label>
             <div className="relative">
               <input
@@ -509,10 +633,10 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            Calculando...
+            {t('calculating')}
           </span>
         ) : (
-          'Calcular NSR'
+          t('calculateNSR')
         )}
       </button>
     </form>

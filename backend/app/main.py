@@ -5,7 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.api import health, compute, prices, export
+from app.api.regions import router as regions_router
+from app.api.mines import router as mines_router
+from app.api.users import router as users_router
 from app.api.errors import setup_error_handlers
+from app.auth.router import router as auth_router
+from app.middleware.security import SecurityHeadersMiddleware
+from app.middleware.rate_limit import setup_rate_limiting
 
 settings = get_settings()
 
@@ -20,6 +26,12 @@ app = FastAPI(
 # Setup error handlers
 setup_error_handlers(app)
 
+# Setup rate limiting
+setup_rate_limiting(app)
+
+# Security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -31,9 +43,13 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, tags=["Health"])
+app.include_router(auth_router, tags=["Auth"])
 app.include_router(compute.router, prefix="/api/v1", tags=["Compute"])
 app.include_router(prices.router, prefix="/api/v1", tags=["Prices"])
 app.include_router(export.router, prefix="/api/v1", tags=["Export"])
+app.include_router(regions_router, prefix="/api/v1", tags=["Regions"])
+app.include_router(mines_router, prefix="/api/v1", tags=["Mines"])
+app.include_router(users_router, prefix="/api/v1", tags=["Users"])
 
 
 @app.get("/")

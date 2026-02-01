@@ -1,9 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import NSRForm from '@/components/NSRForm';
 import NSRResult from '@/components/NSRResult';
 import ScenarioComparison from '@/components/ScenarioComparison';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import UserMenu from '@/components/UserMenu';
+import LanguageSelector from '@/components/LanguageSelector';
+import { useAuth } from '@/components/AuthProvider';
 import { 
   computeNSR, 
   computeScenarios,
@@ -13,19 +18,23 @@ import {
   ScenarioResult 
 } from '@/lib/api';
 
-export default function Home() {
+function HomePage() {
+  const { user } = useAuth();
+  const t = useTranslations();
   const [result, setResult] = useState<NSRResultType | null>(null);
   const [scenarios, setScenarios] = useState<ScenarioResult[] | null>(null);
   const [lastInput, setLastInput] = useState<NSRInput | null>(null);
+  const [primaryMetal, setPrimaryMetal] = useState<string>('Cu');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showScenarios, setShowScenarios] = useState(false);
   const [variation, setVariation] = useState(10);
 
-  const handleSubmit = async (input: NSRInput) => {
+  const handleSubmit = async (input: NSRInput, metal: string) => {
     setIsLoading(true);
     setError(null);
     setLastInput(input);
+    setPrimaryMetal(metal);
     
     try {
       const response = await computeNSR(input);
@@ -33,7 +42,7 @@ export default function Home() {
       setScenarios(null);
       setShowScenarios(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao calcular NSR');
+      setError(err instanceof Error ? err.message : t('errors.nsrCalculation'));
       setResult(null);
     } finally {
       setIsLoading(false);
@@ -49,7 +58,7 @@ export default function Home() {
       setScenarios(response.scenarios);
       setShowScenarios(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao calcular cenários');
+      setError(err instanceof Error ? err.message : t('errors.scenarioCalculation'));
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +74,7 @@ export default function Home() {
       };
       await exportResultCSV(exportData as NSRResultType & NSRInput);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao exportar CSV');
+      setError(err instanceof Error ? err.message : t('errors.exportCSV'));
     }
   };
 
@@ -77,16 +86,18 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                NSR Calculator
+                {t('header.title')}
               </h1>
               <p className="text-sm text-gray-500">
-                Mina Caraíba - Net Smelter Return
+                {t('header.subtitle')}
               </p>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                MVP v0.1.0
+            <div className="flex items-center space-x-4">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {t('common.version')}
               </span>
+              <LanguageSelector />
+              <UserMenu />
             </div>
           </div>
         </div>
@@ -98,7 +109,7 @@ export default function Home() {
           {/* Left Column - Form */}
           <div>
             <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Parâmetros de Entrada
+              {t('form.inputParameters')}
             </h2>
             <NSRForm onSubmit={handleSubmit} isLoading={isLoading} />
           </div>
@@ -106,7 +117,7 @@ export default function Home() {
           {/* Right Column - Results */}
           <div>
             <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Resultados
+              {t('results.title')}
             </h2>
             
             {error && (
@@ -127,7 +138,7 @@ export default function Home() {
                   </div>
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-red-800">
-                      Erro no cálculo
+                      {t('results.calculationError')}
                     </h3>
                     <p className="mt-1 text-sm text-red-700">{error}</p>
                   </div>
@@ -137,7 +148,7 @@ export default function Home() {
 
             {result ? (
               <>
-                <NSRResult result={result} />
+                <NSRResult result={result} primaryMetal={primaryMetal} />
                 
                 {/* Action Buttons */}
                 <div className="mt-4 flex flex-wrap gap-3">
@@ -148,7 +159,7 @@ export default function Home() {
                     <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Exportar CSV
+                    {t('results.exportCSV')}
                   </button>
                   
                   <div className="flex items-center gap-2">
@@ -169,7 +180,7 @@ export default function Home() {
                       <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
-                      Gerar Cenários
+                      {t('results.generateScenarios')}
                     </button>
                   </div>
                 </div>
@@ -197,11 +208,10 @@ export default function Home() {
                   />
                 </svg>
                 <h3 className="mt-4 text-lg font-medium text-gray-900">
-                  Nenhum cálculo realizado
+                  {t('results.noCalculation')}
                 </h3>
                 <p className="mt-2 text-sm text-gray-500">
-                  Preencha os parâmetros e clique em &quot;Calcular NSR&quot; para ver os
-                  resultados.
+                  {t('results.noCalculationHint')}
                 </p>
               </div>
             )}
@@ -213,10 +223,18 @@ export default function Home() {
       <footer className="bg-white border-t mt-8">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-gray-500">
-            NSR Calculator — Substituindo Excel por confiabilidade
+            {t('footer.tagline')}
           </p>
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ProtectedRoute>
+      <HomePage />
+    </ProtectedRoute>
   );
 }

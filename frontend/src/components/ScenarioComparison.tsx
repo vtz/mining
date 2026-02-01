@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { ScenarioResult } from '@/lib/api';
 
 interface ScenarioComparisonProps {
@@ -11,6 +12,7 @@ export default function ScenarioComparison({
   scenarios, 
   variation 
 }: ScenarioComparisonProps) {
+  const t = useTranslations('scenarios');
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -33,10 +35,10 @@ export default function ScenarioComparison({
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">
-          Comparação de Cenários
+          {t('comparison')}
         </h3>
         <span className="text-sm text-gray-500">
-          Variação: ±{variation}%
+          {t('variation')}: ±{variation}%
         </span>
       </div>
 
@@ -45,7 +47,7 @@ export default function ScenarioComparison({
           <thead>
             <tr className="border-b border-gray-200">
               <th className="text-left py-3 px-2 font-medium text-gray-600">
-                Métrica
+                {t('metric')}
               </th>
               {scenarios.map((s) => (
                 <th 
@@ -68,7 +70,7 @@ export default function ScenarioComparison({
             {/* Prices */}
             <tr className="border-b border-gray-100 bg-gray-50">
               <td colSpan={4} className="py-2 px-2 text-xs font-medium text-gray-500 uppercase">
-                Preços
+                {t('prices')}
               </td>
             </tr>
             <tr className="border-b border-gray-100">
@@ -99,7 +101,7 @@ export default function ScenarioComparison({
             {/* NSR by Metal */}
             <tr className="border-b border-gray-100 bg-gray-50">
               <td colSpan={4} className="py-2 px-2 text-xs font-medium text-gray-500 uppercase">
-                NSR por Metal ($/t ore)
+                {t('nsrPerMetal')}
               </td>
             </tr>
             <tr className="border-b border-gray-100">
@@ -130,11 +132,11 @@ export default function ScenarioComparison({
             {/* Total NSR */}
             <tr className="border-b border-gray-100 bg-gray-50">
               <td colSpan={4} className="py-2 px-2 text-xs font-medium text-gray-500 uppercase">
-                Resultado
+                {t('result')}
               </td>
             </tr>
             <tr className="border-b border-gray-200 font-medium">
-              <td className="py-3 px-2 text-gray-900">NSR Total ($/t ore)</td>
+              <td className="py-3 px-2 text-gray-900">{t('totalNSR')}</td>
               {scenarios.map((s) => (
                 <td 
                   key={s.name} 
@@ -149,7 +151,7 @@ export default function ScenarioComparison({
               ))}
             </tr>
             <tr>
-              <td className="py-2 px-2 text-gray-500">Δ vs Base</td>
+              <td className="py-2 px-2 text-gray-500">{t('deltaVsBase')}</td>
               {scenarios.map((s) => {
                 const delta = baseNSR !== 0 
                   ? ((s.result.nsr_per_tonne - baseNSR) / baseNSR * 100)

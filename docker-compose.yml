@@ -1,36 +1,63 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: nsr-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nsr
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: nsr-backend
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/nsr
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8000/auth/callback/google}
+      METAL_PRICE_API_KEY: ${METAL_PRICE_API_KEY:-}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      CORS_ORIGINS: '["http://localhost:3000"]'
     ports:
       - "8000:8000"
-    environment:
-      - DEBUG=true
-      - DATABASE_URL=sqlite:///./data/nsr.db
-      - CORS_ORIGINS=["http://localhost:3000"]
-    volumes:
-      - ./backend:/app
-      - backend-data:/app/data
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        python scripts/seed_data.py &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
 
+  # Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: nsr-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    command: npm run dev
 
 volumes:
-  backend-data:
+  postgres_data:

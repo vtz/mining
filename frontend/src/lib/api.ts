@@ -2,6 +2,8 @@
  * API client for NSR Calculator backend
  */
 
+import { authFetch, getAccessToken } from './auth';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export interface NSRInput {
@@ -235,8 +237,8 @@ export async function exportResultCSV(result: NSRResult & NSRInput): Promise<voi
   window.URL.revokeObjectURL(url);
 }
 
-// Mine and area data (from Caraíba)
-export const MINES_DATA = {
+// Mine and area data - fallback for when API is unavailable
+export const MINES_DATA_FALLBACK: Record<string, string[]> = {
   'Vermelhos UG': ['Vermelhos Sul', 'UG03', 'N5/UG04', 'N8 - UG'],
   'Pilar UG': [
     'Deepening Above - 965',
@@ -255,6 +257,106 @@ export const MINES_DATA = {
   'Surubim & C12': ['Surubim OP', 'C12 OP', 'C12 UG'],
   'Vermelhos OP': ['N8', 'N9'],
   'Suçuarana OP': ['Suçuarana OP', 'S10', 'S5'],
-} as const;
+};
 
-export type MineName = keyof typeof MINES_DATA;
+// Re-export for backwards compatibility during transition
+export const MINES_DATA = MINES_DATA_FALLBACK;
+
+export type MineName = string;
+
+// Region types
+export interface Region {
+  id: string;
+  name: string;
+  country: string;
+  state: string | null;
+  municipality: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  description: string | null;
+  mine_count: number;
+}
+
+export interface RegionListResponse {
+  regions: Region[];
+  total: number;
+}
+
+// Mine types
+export interface Mine {
+  id: string;
+  name: string;
+  region_id: string;
+  region_name: string;
+  primary_metal: string;
+  mining_method: string;
+  recovery_params: Record<string, unknown> | null;
+  commercial_terms: Record<string, unknown> | null;
+  user_role: string | null;
+}
+
+export interface MineListResponse {
+  mines: Mine[];
+  total: number;
+}
+
+// Fetch regions from API
+export async function fetchRegions(): Promise<RegionListResponse> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await authFetch(`${API_BASE_URL}/api/v1/regions`);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch regions');
+  }
+
+  return response.json();
+}
+
+// Fetch mines from API
+export async function fetchMines(regionId?: string): Promise<MineListResponse> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const url = new URL(`${API_BASE_URL}/api/v1/mines`);
+  if (regionId) {
+    url.searchParams.set('region_id', regionId);
+  }
+
+  const response = await authFetch(url.toString());
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch mines');
+  }
+
+  return response.json();
+}
+
+// Build mines data structure from API response
+export function buildMinesData(mines: Mine[]): Record<string, string[]> {
+  const minesData: Record<string, string[]> = {};
+  
+  for (const mine of mines) {
+    // Extract areas from recovery_params if available
+    let areas: string[] = [];
+    
+    if (mine.recovery_params && typeof mine.recovery_params === 'object') {
+      const recoveryAreas = mine.recovery_params.areas;
+      if (recoveryAreas && typeof recoveryAreas === 'object') {
+        areas = Object.keys(recoveryAreas);
+      }
+    }
+    
+    // Use extracted areas if available, otherwise use region name as default area
+    minesData[mine.name] = areas.length > 0 
+      ? areas 
+      : [mine.region_name];
+  }
+  
+  return minesData;
+}

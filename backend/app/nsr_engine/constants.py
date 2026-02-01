@@ -110,3 +110,83 @@ DEFAULT_RECOVERY_PARAMS = {"a": 3.0, "b": 90.0, "fixed": None}
 # Default Au/Ag recovery (Base Case from Excel)
 DEFAULT_AU_RECOVERY = 0.60  # 60% (Base Case)
 DEFAULT_AG_RECOVERY = 0.60  # 60% (Base Case)
+
+# =============================================================================
+# Multi-Metal Support (Mocked for Phase 2)
+# These are placeholder values for demonstration
+# =============================================================================
+
+# Metal configurations
+SUPPORTED_METALS = {
+    "Cu": {
+        "name": "Copper",
+        "price_unit": "$/lb",
+        "default_price": DEFAULT_CU_PRICE_PER_LB,
+        "implemented": True,
+    },
+    "Au": {
+        "name": "Gold",
+        "price_unit": "$/oz",
+        "default_price": DEFAULT_AU_PRICE_PER_OZ,
+        "implemented": False,  # Mocked
+    },
+    "Zn": {
+        "name": "Zinc",
+        "price_unit": "$/lb",
+        "default_price": 1.35,  # Mocked price
+        "implemented": False,
+    },
+    "Ni": {
+        "name": "Nickel",
+        "price_unit": "$/lb",
+        "default_price": 8.50,  # Mocked price
+        "implemented": False,
+    },
+    "Fe": {
+        "name": "Iron",
+        "price_unit": "$/t",
+        "default_price": 120.0,  # Mocked price
+        "implemented": False,
+    },
+}
+
+# Mocked recovery parameters for non-Cu metals
+# In reality, each metal would have its own recovery formula
+MOCKED_RECOVERY = {
+    "Au": {"default": 0.90},
+    "Zn": {"default": 0.85},
+    "Ni": {"default": 0.80},
+    "Fe": {"default": 0.95},
+}
+
+# Mocked commercial terms for non-Cu metals
+MOCKED_COMMERCIAL_TERMS = {
+    "Au": {
+        "payability": 0.95,
+        "tc": 50.0,
+        "rc": 5.0,
+        "freight": 50.0,
+        "conc_grade": 0.90,  # 90% Au in concentrate (unrealistic but for demo)
+    },
+    "Zn": {
+        "payability": 0.85,
+        "tc": 200.0,
+        "rc": 0.0,
+        "freight": 100.0,
+        "conc_grade": 50.0,  # 50% Zn in concentrate
+    },
+    "Ni": {
+        "payability": 0.75,
+        "tc": 100.0,
+        "rc": 0.0,
+        "freight": 80.0,
+        "conc_grade": 15.0,  # 15% Ni in concentrate
+    },
+    "Fe": {
+        "payability": 1.0,  # No payability deduction for iron
+        "tc": 0.0,
+        "rc": 0.0,
+        "freight": 30.0,
+        "conc_grade": 65.0,  # 65% Fe in iron ore concentrate
+    },
+}
