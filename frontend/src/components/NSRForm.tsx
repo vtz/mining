@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MINES_DATA_FALLBACK, 
   NSRInput, 
@@ -13,6 +14,10 @@ import {
   buildMinesData,
   Mine,
 } from '@/lib/api';
+import { Tabs, TabList, Tab, TabPanels, TabPanel } from './ui/Tabs';
+import { InfoTooltip } from './ui/Tooltip';
+import { Slider } from './ui/Slider';
+import { Skeleton } from './ui/Skeleton';
 
 interface NSRFormProps {
   onSubmit: (input: NSRInput, primaryMetal: string) => void;
@@ -22,24 +27,23 @@ interface NSRFormProps {
 // Determine which metals to show based on primary metal
 function getMetalsForMine(primaryMetal: string): { cu: boolean; au: boolean; ag: boolean; isImplemented: boolean } {
   switch (primaryMetal) {
-    case 'Au': // Gold mine - show Au, maybe Ag
+    case 'Au':
       return { cu: false, au: true, ag: true, isImplemented: false };
-    case 'Ag': // Silver mine
+    case 'Ag':
       return { cu: false, au: true, ag: true, isImplemented: false };
-    case 'Ni': // Nickel mine - show Ni as Cu placeholder for now (not fully implemented)
+    case 'Ni':
       return { cu: true, au: false, ag: false, isImplemented: false };
-    case 'Zn': // Zinc mine
+    case 'Zn':
       return { cu: true, au: false, ag: true, isImplemented: false };
-    case 'Fe': // Iron mine
+    case 'Fe':
       return { cu: true, au: false, ag: false, isImplemented: false };
-    case 'Cu': // Copper mine - show all (Cu is primary, Au/Ag as byproducts)
+    case 'Cu':
       return { cu: true, au: true, ag: true, isImplemented: true };
     default:
       return { cu: true, au: true, ag: true, isImplemented: true };
   }
 }
 
-// Get metal display name for non-copper primary metals
 function getMetalDisplayName(primaryMetal: string): string {
   switch (primaryMetal) {
     case 'Ni': return 'Níquel (Ni)';
@@ -49,14 +53,74 @@ function getMetalDisplayName(primaryMetal: string): string {
   }
 }
 
+// Input field component with tooltip
+interface FormFieldProps {
+  label: string;
+  tooltip?: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+function FormField({ label, tooltip, children, className = '' }: FormFieldProps) {
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          {label}
+        </label>
+        {tooltip && <InfoTooltip content={tooltip} />}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// Number input with unit
+interface NumberInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  unit: string;
+  step?: string;
+  min?: string;
+  max?: string;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+}
+
+function NumberInput({ value, onChange, unit, step = '0.01', min = '0', max, placeholder, required, disabled }: NumberInputProps) {
+  return (
+    <div className="relative">
+      <input
+        type="number"
+        step={step}
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white 
+          shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 
+          disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+        placeholder={placeholder}
+        required={required}
+        disabled={disabled}
+      />
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">
+        {unit}
+      </span>
+    </div>
+  );
+}
+
 export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
   const t = useTranslations('form');
   
-  // Mines data - dynamically loaded
+  // Mines data
   const [minesData, setMinesData] = useState<Record<string, string[]>>(MINES_DATA_FALLBACK);
   const [minesList, setMinesList] = useState<Mine[]>([]);
   const [loadingMines, setLoadingMines] = useState<boolean>(true);
   
+  // Form state
   const [mine, setMine] = useState<string>('');
   const [area, setArea] = useState<string>('');
   const [primaryMetal, setPrimaryMetal] = useState<string>('Cu');
@@ -64,8 +128,8 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
   const [auGrade, setAuGrade] = useState<string>('0.23');
   const [agGrade, setAgGrade] = useState<string>('2.33');
   const [oreTonnage, setOreTonnage] = useState<string>('20000');
-  const [mineDilution, setMineDilution] = useState<string>('14');
-  const [oreRecovery, setOreRecovery] = useState<string>('98');
+  const [mineDilution, setMineDilution] = useState<number>(14);
+  const [oreRecovery, setOreRecovery] = useState<number>(98);
   
   // Metal prices
   const [cuPrice, setCuPrice] = useState<string>('');
@@ -80,6 +144,9 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [isManualMode, setIsManualMode] = useState<boolean>(false);
 
+  // Active tab
+  const [activeTab, setActiveTab] = useState<string>('location');
+
   // Fetch mines on mount
   useEffect(() => {
     const loadMines = async () => {
@@ -89,20 +156,16 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
         setMinesList(response.mines);
         const dynamicMinesData = buildMinesData(response.mines);
         
-        // Use dynamic data if we got mines, otherwise fall back
         if (Object.keys(dynamicMinesData).length > 0) {
           setMinesData(dynamicMinesData);
-          // Set initial mine and area from dynamic data
           const firstMine = Object.keys(dynamicMinesData)[0];
           setMine(firstMine);
           setArea(dynamicMinesData[firstMine][0]);
-          // Set primary metal from first mine
           const firstMineData = response.mines.find((m: Mine) => m.name === firstMine);
           if (firstMineData) {
             setPrimaryMetal(firstMineData.primary_metal);
           }
         } else {
-          // Fall back to static data
           setMinesData(MINES_DATA_FALLBACK);
           const firstMine = Object.keys(MINES_DATA_FALLBACK)[0];
           setMine(firstMine);
@@ -110,7 +173,6 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
         }
       } catch (error) {
         console.error('Failed to fetch mines:', error);
-        // Fall back to static data
         setMinesData(MINES_DATA_FALLBACK);
         const firstMine = Object.keys(MINES_DATA_FALLBACK)[0];
         setMine(firstMine);
@@ -122,23 +184,20 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
     loadMines();
   }, []);
 
-  // Fetch providers and prices on mount
+  // Fetch providers and prices
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoadingPrices(true);
         
-        // Load providers
         const providersResponse = await fetchPriceProviders();
         setProviders(providersResponse.providers);
         
-        // Find default provider
         const defaultProvider = providersResponse.providers.find(p => p.is_default);
         if (defaultProvider) {
           setSelectedProvider(defaultProvider.name);
         }
         
-        // Load prices
         const pricesResponse = await fetchMetalPrices();
         setCuPrice(pricesResponse.prices.cu.value.toString());
         setAuPrice(pricesResponse.prices.au.value.toString());
@@ -147,7 +206,6 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
         setPriceIsLive(pricesResponse.metadata.is_live);
       } catch (error) {
         console.error('Failed to fetch data:', error);
-        // Use defaults
         setCuPrice('6.28');
         setAuPrice('5360');
         setAgPrice('116.39');
@@ -179,7 +237,6 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
         setLoadingPrices(false);
       }
     } else {
-      // Manual mode - keep current prices editable
       setPriceSource('manual');
       setPriceIsLive(false);
     }
@@ -222,14 +279,12 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
     if (minesData[newMine] && minesData[newMine].length > 0) {
       setArea(minesData[newMine][0]);
     }
-    // Update primary metal based on selected mine
     const selectedMine = minesList.find((m) => m.name === newMine);
     if (selectedMine) {
       setPrimaryMetal(selectedMine.primary_metal);
     }
   };
 
-  // Get metals visibility based on current mine
   const metalsToShow = getMetalsForMine(primaryMetal);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -241,404 +296,386 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
       au_grade: metalsToShow.au ? parseFloat(auGrade) : 0,
       ag_grade: metalsToShow.ag ? parseFloat(agGrade) : 0,
       ore_tonnage: parseFloat(oreTonnage),
-      mine_dilution: parseFloat(mineDilution) / 100,
-      ore_recovery: parseFloat(oreRecovery) / 100,
+      mine_dilution: mineDilution / 100,
+      ore_recovery: oreRecovery / 100,
       cu_price: cuPrice ? parseFloat(cuPrice) : undefined,
       au_price: auPrice ? parseFloat(auPrice) : undefined,
       ag_price: agPrice ? parseFloat(agPrice) : undefined,
     }, primaryMetal);
   };
 
+  // Calculate estimated NSR preview (simplified)
+  const estimatedNSR = cuPrice && cuGrade 
+    ? (parseFloat(cuGrade) * parseFloat(cuPrice) * 22.0462 * 0.9 * (1 - mineDilution/100) * (oreRecovery/100)).toFixed(2)
+    : '--';
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Mine/Area Selection */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          {t('mineSelection')}
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('mine')}
-            </label>
-            <select
-              value={mine}
-              onChange={(e) => handleMineChange(e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
-              disabled={loadingMines}
-            >
-              {loadingMines ? (
-                <option value="">Carregando...</option>
-              ) : (
-                Object.keys(minesData).map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('area')}
-            </label>
-            <select
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
-              disabled={loadingMines}
-            >
-              {loadingMines ? (
-                <option value="">Carregando...</option>
-              ) : (
-                (minesData[mine] || []).map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Head Grades */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          {t('headGrades')}
-        </h2>
-        
-        {/* Warning for non-implemented metals */}
-        {!metalsToShow.isImplemented && (
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-800">
-              <span className="font-medium">Modo Demo:</span> Cálculo NSR para {getMetalDisplayName(primaryMetal)} ainda não está totalmente implementado. 
-              Os valores são simulados usando parâmetros de cobre.
-            </p>
-          </div>
-        )}
-        
-        <div className={`grid grid-cols-1 gap-4 ${
-          [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 3 
-            ? 'md:grid-cols-3' 
-            : [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 2 
-              ? 'md:grid-cols-2' 
-              : ''
-        }`}>
-          {metalsToShow.cu && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {primaryMetal === 'Cu' ? t('copper') : getMetalDisplayName(primaryMetal)}
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  value={cuGrade}
-                  onChange={(e) => setCuGrade(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8 text-gray-900"
-                  required
-                />
-                <span className="absolute right-3 top-2 text-gray-500">%</span>
-              </div>
-            </div>
-          )}
-          {metalsToShow.au && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('gold')}
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={auGrade}
-                  onChange={(e) => setAuGrade(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                  required
-                />
-                <span className="absolute right-3 top-2 text-gray-500">g/t</span>
-              </div>
-            </div>
-          )}
-          {metalsToShow.ag && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('silver')}
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={agGrade}
-                  onChange={(e) => setAgGrade(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                  required
-                />
-                <span className="absolute right-3 top-2 text-gray-500">g/t</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Metal Prices */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              {t('metalPrices')}
-            </h2>
-            <p className="text-xs text-gray-500">
-              {loadingPrices ? t('refreshing') : (
-                <>
-                  {t('source')}: <span className={priceIsLive ? 'text-green-600 font-medium' : 'text-gray-500'}>
-                    {priceSource === 'metalpriceapi' ? t('comexRealtime') : 
-                     priceSource === 'manual' ? t('manual') :
-                     priceSource === 'default' ? t('defaultValues') : priceSource}
-                  </span>
-                  {priceIsLive && <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>}
-                </>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isManualMode && (
-              <button
-                type="button"
-                onClick={saveManualPrices}
-                className="text-sm text-green-600 hover:text-green-800"
-              >
-                {t('save', { ns: 'common' })}
-              </button>
-            )}
-            {!isManualMode && (
-              <button
-                type="button"
-                onClick={refreshPrices}
-                disabled={loadingPrices}
-                className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
-              >
-                {loadingPrices ? t('refreshing') : t('refresh')}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Provider Selection */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('priceSource')}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {providers.map((provider) => (
-              <button
-                key={provider.name}
-                type="button"
-                onClick={() => handleProviderChange(provider.name)}
-                disabled={!provider.is_available && provider.name !== 'manual'}
-                className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
-                  selectedProvider === provider.name
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : provider.is_available || provider.name === 'manual'
-                    ? 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                    : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                }`}
-                title={provider.description}
-              >
-                {provider.display_name}
-                {!provider.is_available && provider.name !== 'manual' && (
-                  <span className="ml-1 text-xs">{t('noApiKey')}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-        
-        {/* Price Disclaimer */}
-        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-xs text-amber-800">
-            {isManualMode ? (
-              <>{t('manualModeDescription')}</>
-            ) : (
-              <>
-                {t('priceDisclaimer')}
-                {!priceIsLive && priceSource === 'default' && (
-                  <span className="block mt-1 text-amber-700">
-                    {t('defaultPricesNotice')}
-                  </span>
-                )}
-              </>
-            )}
-          </p>
-        </div>
-        <div className={`grid grid-cols-1 gap-4 ${
-          [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 3 
-            ? 'md:grid-cols-3' 
-            : [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 2 
-              ? 'md:grid-cols-2' 
-              : ''
-        }`}>
-          {metalsToShow.cu && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {primaryMetal === 'Cu' ? t('copper') : getMetalDisplayName(primaryMetal)}
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={cuPrice}
-                  onChange={(e) => setCuPrice(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                  placeholder="..."
-                />
-                <span className="absolute right-3 top-2 text-gray-500">$/lb</span>
-              </div>
-            </div>
-          )}
-          {metalsToShow.au && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('gold')}
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={auPrice}
-                  onChange={(e) => setAuPrice(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                  placeholder="..."
-                />
-                <span className="absolute right-3 top-2 text-gray-500">$/oz</span>
-              </div>
-            </div>
-          )}
-          {metalsToShow.ag && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('silver')}
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={agPrice}
-                  onChange={(e) => setAgPrice(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-12 text-gray-900"
-                  placeholder="..."
-                />
-                <span className="absolute right-3 top-2 text-gray-500">$/oz</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Mine Parameters */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          {t('mineParameters')}
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('tonnage')}
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="1"
-                min="1"
-                value={oreTonnage}
-                onChange={(e) => setOreTonnage(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8 text-gray-900"
-                required
-              />
-              <span className="absolute right-3 top-2 text-gray-500">t</span>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('dilution')}
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="1"
-                min="0"
-                max="100"
-                value={mineDilution}
-                onChange={(e) => setMineDilution(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8 text-gray-900"
-                required
-              />
-              <span className="absolute right-3 top-2 text-gray-500">%</span>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('oreRecovery')}
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="1"
-                min="0"
-                max="100"
-                value={oreRecovery}
-                onChange={(e) => setOreRecovery(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8 text-gray-900"
-                required
-              />
-              <span className="absolute right-3 top-2 text-gray-500">%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Submit Button */}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* NSR Preview Banner */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 rounded-xl p-4 text-white shadow-lg"
       >
-        {isLoading ? (
-          <span className="flex items-center justify-center">
-            <svg
-              className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            {t('calculating')}
-          </span>
-        ) : (
-          t('calculateNSR')
-        )}
-      </button>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-blue-200 text-xs uppercase tracking-wide">{t('estimatedNSR')}</p>
+            <p className="text-3xl font-bold">
+              ${estimatedNSR}
+              <span className="text-lg font-normal text-blue-200 ml-1">/t</span>
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-blue-200 text-xs">{t('clickToCalculate')}</p>
+            <p className="text-sm text-blue-100">{mine} • {area}</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Tabbed Form */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+        <Tabs defaultTab="location" onChange={setActiveTab}>
+          <div className="border-b border-gray-200 dark:border-gray-700 px-4 pt-4">
+            <TabList className="gap-1 -mb-px">
+              <Tab value="location" icon={
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              }>
+                {t('location')}
+              </Tab>
+              <Tab value="grades" icon={
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+              }>
+                {t('grades')}
+              </Tab>
+              <Tab value="prices" icon={
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }>
+                {t('prices')}
+              </Tab>
+              <Tab value="parameters" icon={
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              }>
+                {t('parameters')}
+              </Tab>
+            </TabList>
+          </div>
+
+          <TabPanels className="p-6">
+            {/* Location Tab */}
+            <TabPanel value="location">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField label={t('mine')} tooltip={t('mineTooltip')}>
+                    {loadingMines ? (
+                      <Skeleton variant="rectangular" height={42} />
+                    ) : (
+                      <select
+                        value={mine}
+                        onChange={(e) => handleMineChange(e.target.value)}
+                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white 
+                          shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      >
+                        {Object.keys(minesData).map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    )}
+                  </FormField>
+
+                  <FormField label={t('area')} tooltip={t('areaTooltip')}>
+                    {loadingMines ? (
+                      <Skeleton variant="rectangular" height={42} />
+                    ) : (
+                      <select
+                        value={area}
+                        onChange={(e) => setArea(e.target.value)}
+                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white 
+                          shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      >
+                        {(minesData[mine] || []).map((a) => (
+                          <option key={a} value={a}>{a}</option>
+                        ))}
+                      </select>
+                    )}
+                  </FormField>
+                </div>
+
+                {/* Mine Info Card */}
+                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
+                      <span className="text-blue-600 dark:text-blue-400 font-bold">{primaryMetal}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{mine}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {t('primaryMetal')}: {getMetalDisplayName(primaryMetal)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabPanel>
+
+            {/* Grades Tab */}
+            <TabPanel value="grades">
+              <div className="space-y-4">
+                {!metalsToShow.isImplemented && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      <span className="font-medium">Modo Demo:</span> Cálculo NSR para {getMetalDisplayName(primaryMetal)} ainda não está totalmente implementado.
+                    </p>
+                  </div>
+                )}
+
+                <div className={`grid gap-6 ${
+                  [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 3 
+                    ? 'md:grid-cols-3' 
+                    : [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 2 
+                      ? 'md:grid-cols-2' 
+                      : ''
+                }`}>
+                  {metalsToShow.cu && (
+                    <FormField 
+                      label={primaryMetal === 'Cu' ? t('copper') : getMetalDisplayName(primaryMetal)}
+                      tooltip={t('gradeTooltip')}
+                    >
+                      <NumberInput
+                        value={cuGrade}
+                        onChange={setCuGrade}
+                        unit="%"
+                        step="0.01"
+                        max="100"
+                        required
+                      />
+                    </FormField>
+                  )}
+
+                  {metalsToShow.au && (
+                    <FormField label={t('gold')} tooltip={t('goldGradeTooltip')}>
+                      <NumberInput
+                        value={auGrade}
+                        onChange={setAuGrade}
+                        unit="g/t"
+                        step="0.01"
+                        required
+                      />
+                    </FormField>
+                  )}
+
+                  {metalsToShow.ag && (
+                    <FormField label={t('silver')} tooltip={t('silverGradeTooltip')}>
+                      <NumberInput
+                        value={agGrade}
+                        onChange={setAgGrade}
+                        unit="g/t"
+                        step="0.01"
+                        required
+                      />
+                    </FormField>
+                  )}
+                </div>
+              </div>
+            </TabPanel>
+
+            {/* Prices Tab */}
+            <TabPanel value="prices">
+              <div className="space-y-4">
+                {/* Provider Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t('priceSource')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {providers.map((provider) => (
+                      <button
+                        key={provider.name}
+                        type="button"
+                        onClick={() => handleProviderChange(provider.name)}
+                        disabled={!provider.is_available && provider.name !== 'manual'}
+                        className={`px-4 py-2 text-sm rounded-lg border transition-all ${
+                          selectedProvider === provider.name
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                            : provider.is_available || provider.name === 'manual'
+                            ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                        }`}
+                        title={provider.description}
+                      >
+                        {provider.display_name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Price Status */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${priceIsLive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {priceSource === 'metalpriceapi' ? t('comexRealtime') : 
+                       priceSource === 'manual' ? t('manual') :
+                       priceSource === 'default' ? t('defaultValues') : priceSource}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    {isManualMode && (
+                      <button
+                        type="button"
+                        onClick={saveManualPrices}
+                        className="text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                      >
+                        {t('save')}
+                      </button>
+                    )}
+                    {!isManualMode && (
+                      <button
+                        type="button"
+                        onClick={refreshPrices}
+                        disabled={loadingPrices}
+                        className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
+                      >
+                        {loadingPrices ? t('refreshing') : t('refresh')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Price Inputs */}
+                <div className={`grid gap-6 ${
+                  [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 3 
+                    ? 'md:grid-cols-3' 
+                    : [metalsToShow.cu, metalsToShow.au, metalsToShow.ag].filter(Boolean).length === 2 
+                      ? 'md:grid-cols-2' 
+                      : ''
+                }`}>
+                  {metalsToShow.cu && (
+                    <FormField 
+                      label={primaryMetal === 'Cu' ? t('copper') : getMetalDisplayName(primaryMetal)}
+                    >
+                      <NumberInput
+                        value={cuPrice}
+                        onChange={setCuPrice}
+                        unit="$/lb"
+                        placeholder="..."
+                        disabled={!isManualMode && loadingPrices}
+                      />
+                    </FormField>
+                  )}
+
+                  {metalsToShow.au && (
+                    <FormField label={t('gold')}>
+                      <NumberInput
+                        value={auPrice}
+                        onChange={setAuPrice}
+                        unit="$/oz"
+                        step="1"
+                        placeholder="..."
+                        disabled={!isManualMode && loadingPrices}
+                      />
+                    </FormField>
+                  )}
+
+                  {metalsToShow.ag && (
+                    <FormField label={t('silver')}>
+                      <NumberInput
+                        value={agPrice}
+                        onChange={setAgPrice}
+                        unit="$/oz"
+                        placeholder="..."
+                        disabled={!isManualMode && loadingPrices}
+                      />
+                    </FormField>
+                  )}
+                </div>
+
+                {/* Price Disclaimer */}
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {isManualMode ? t('manualModeDescription') : t('priceDisclaimer')}
+                </p>
+              </div>
+            </TabPanel>
+
+            {/* Parameters Tab */}
+            <TabPanel value="parameters">
+              <div className="space-y-6">
+                <FormField label={t('tonnage')} tooltip={t('tonnageTooltip')}>
+                  <NumberInput
+                    value={oreTonnage}
+                    onChange={setOreTonnage}
+                    unit="t"
+                    step="1"
+                    min="1"
+                    required
+                  />
+                </FormField>
+
+                <Slider
+                  value={mineDilution}
+                  min={0}
+                  max={50}
+                  step={1}
+                  onChange={setMineDilution}
+                  label={t('dilution')}
+                  unit="%"
+                />
+
+                <Slider
+                  value={oreRecovery}
+                  min={50}
+                  max={100}
+                  step={1}
+                  onChange={setOreRecovery}
+                  label={t('oreRecovery')}
+                  unit="%"
+                />
+              </div>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </div>
+
+      {/* Submit Button - Sticky */}
+      <div className="sticky bottom-4 z-10">
+        <motion.button
+          type="submit"
+          disabled={isLoading}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
+            text-white py-4 px-6 rounded-xl font-medium shadow-lg hover:shadow-xl
+            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
+            disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-3">
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              {t('calculating')}
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              {t('calculateNSR')}
+              <span className="text-blue-200 text-sm">(Ctrl+Enter)</span>
+            </span>
+          )}
+        </motion.button>
+      </div>
     </form>
   );
 }
