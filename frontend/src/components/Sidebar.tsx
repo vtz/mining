@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ui/ThemeProvider';
+import { useAuth } from './AuthProvider';
 
 interface NavItem {
   name: string;
@@ -22,6 +22,8 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('nav');
+  const { user } = useAuth();
+  const isAdmin = user?.is_admin ?? false;
 
   const navItems: NavItem[] = [
     {
@@ -184,52 +186,54 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           ))}
         </div>
 
-        {/* Admin Section */}
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
-          {!isCollapsed && (
-            <h3 className="px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-              {t('admin')}
-            </h3>
-          )}
-          <div className="space-y-1">
-            {adminItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors relative group
-                  ${isActive(item.href)
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`}
-              >
-                <span className={`flex-shrink-0 ${isActive(item.href) ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                  {item.icon}
-                </span>
-                
-                <AnimatePresence mode="wait">
-                  {!isCollapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
-                      className="font-medium truncate"
-                    >
-                      {item.name}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+        {/* Admin Section - Only show for admins */}
+        {isAdmin && (
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+            {!isCollapsed && (
+              <h3 className="px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                {t('admin')}
+              </h3>
+            )}
+            <div className="space-y-1">
+              {adminItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors relative group
+                    ${isActive(item.href)
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                >
+                  <span className={`flex-shrink-0 ${isActive(item.href) ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                    {item.icon}
+                  </span>
+                  
+                  <AnimatePresence mode="wait">
+                    {!isCollapsed && (
+                      <motion.span
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: 'auto' }}
+                        exit={{ opacity: 0, width: 0 }}
+                        className="font-medium truncate"
+                      >
+                        {item.name}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
 
-                {/* Collapsed tooltip */}
-                {isCollapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded 
-                    opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                    {item.name}
-                  </div>
-                )}
-              </Link>
-            ))}
+                  {/* Collapsed tooltip */}
+                  {isCollapsed && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded 
+                      opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                      {item.name}
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </nav>
 
       {/* Bottom section */}
