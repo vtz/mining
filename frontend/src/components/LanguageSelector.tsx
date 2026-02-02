@@ -31,7 +31,7 @@ export default function LanguageSelector() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-1 px-2 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+        className="flex items-center space-x-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
         title={t('select')}
       >
         <span className="text-base">{localeFlags[currentLocale]}</span>
@@ -47,16 +47,16 @@ export default function LanguageSelector() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-50 border">
-          <div className="px-3 py-2 border-b">
-            <p className="text-xs font-medium text-gray-500 uppercase">{t('select')}</p>
+        <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-[100] border border-gray-200 dark:border-gray-700">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('select')}</p>
           </div>
           {locales.map((locale) => (
             <button
               key={locale}
               onClick={() => handleLocaleChange(locale)}
-              className={`w-full flex items-center space-x-3 px-3 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                locale === currentLocale ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+              className={`w-full flex items-center space-x-3 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                locale === currentLocale ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               <span className="text-base">{localeFlags[locale]}</span>
