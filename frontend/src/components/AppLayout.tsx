@@ -6,8 +6,7 @@ import Sidebar from './Sidebar';
 import QuickStats from './QuickStats';
 import UserMenu from './UserMenu';
 import LanguageSelector from './LanguageSelector';
-import { ThemeProvider, ThemeToggle } from './ui/ThemeProvider';
-import { ToastProvider } from './ui/Toast';
+import { ThemeToggle } from './ui/ThemeProvider';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -39,9 +38,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }, [pathname]);
 
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
           {/* Sidebar - Desktop */}
           <div className="hidden lg:block">
             <Sidebar 
@@ -120,8 +117,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
             </footer>
           </div>
-        </div>
-      </ToastProvider>
-    </ThemeProvider>
+    </div>
   );
 }
