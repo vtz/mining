@@ -278,8 +278,8 @@ export default function SensitivityAnalysis({ baseInput, baseNSR }: SensitivityA
                     className="text-gray-600 dark:text-gray-400"
                   />
                   <Tooltip 
-                    formatter={(value: number) => [formatCurrency(value), 'NSR']}
-                    labelFormatter={(label) => `${selectedVar.label}: ${formatValue(label, selectedVar.unit)}`}
+                    formatter={(value) => [formatCurrency(value as number), 'NSR']}
+                    labelFormatter={(label) => `${selectedVar.label}: ${formatValue(label as number, selectedVar.unit)}`}
                     contentStyle={{
                       backgroundColor: 'rgba(255, 255, 255, 0.95)',
                       borderRadius: '8px',
