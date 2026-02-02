@@ -13,7 +13,9 @@
     "add": "Agregar",
     "search": "Buscar",
     "actions": "Acciones",
-    "or": "o"
+    "or": "o",
+    "dismiss": "Cerrar",
+    "toCalculate": "para calcular"
   },
   "header": {
     "title": "NSR Calculator",
@@ -27,7 +29,12 @@
     "admin": "Admin",
     "users": "Usuarios",
     "regions": "Regiones",
-    "mines": "Minas"
+    "mines": "Minas",
+    "calculator": "Calculadora",
+    "sensitivity": "Sensibilidad",
+    "history": "Historial",
+    "blockMap": "Mapa de Bloques",
+    "soon": "Próximamente"
   },
   "auth": {
     "loginWithGoogle": "Iniciar sesión con Google",
@@ -74,7 +81,21 @@
     "calculating": "Calculando...",
     "manualModeDescription": "Modo Manual: Ingrese los precios deseados en los campos siguientes. Haga clic en \"Guardar\" para almacenar los valores en el servidor.",
     "priceDisclaimer": "Aviso: Precios obtenidos via COMEX (CME Group), el principal mercado de futuros de metales de EE.UU. Los valores representan cotizaciones de contratos de futuros y pueden diferir de los precios spot. Para decisiones financieras, consulte fuentes oficiales y profesionales calificados.",
-    "defaultPricesNotice": "Precios predeterminados de Enero/2026. Configure la clave API para datos en tiempo real."
+    "defaultPricesNotice": "Precios predeterminados de Enero/2026. Configure la clave API para datos en tiempo real.",
+    "estimatedNSR": "NSR Estimado",
+    "clickToCalculate": "Clic para calcular",
+    "location": "Ubicación",
+    "grades": "Leyes",
+    "prices": "Precios",
+    "parameters": "Parámetros",
+    "mineTooltip": "Seleccione la mina para el cálculo de NSR",
+    "areaTooltip": "Seleccione el área o región específica dentro de la mina",
+    "gradeTooltip": "Ley del metal en el mineral (%)",
+    "goldGradeTooltip": "Ley de oro en gramos por tonelada",
+    "silverGradeTooltip": "Ley de plata en gramos por tonelada",
+    "tonnageTooltip": "Tonelaje total de mineral a procesar",
+    "primaryMetal": "Metal Principal",
+    "save": "Guardar"
   },
   "results": {
     "title": "Resultados",
@@ -105,7 +126,17 @@
     "nsrFinal": "NSR Final",
     "netValue": "Valor neto",
     "exportCSV": "Exportar CSV",
-    "generateScenarios": "Generar Escenarios"
+    "generateScenarios": "Generar Escenarios",
+    "sensitivity": "Análisis de Sensibilidad",
+    "calculated": "Cálculo completado",
+    "exported": "Exportado con éxito",
+    "exportedDescription": "El archivo CSV ha sido descargado",
+    "copyNSR": "Copiar valor NSR",
+    "deductions": "Deducciones",
+    "intermediate": "Intermedio",
+    "final": "Final",
+    "dilution": "Dilución",
+    "recovery": "Recuperación"
   },
   "scenarios": {
     "comparison": "Comparación de Escenarios",
@@ -118,7 +149,53 @@
     "deltaVsBase": "Δ vs Base",
     "downside": "Pesimista",
     "base": "Base",
-    "upside": "Optimista"
+    "upside": "Optimista",
+    "generated": "Escenarios generados",
+    "scenarios": "escenarios",
+    "nsrComparison": "Comparación de NSR por Escenario"
+  },
+  "history": {
+    "title": "Historial de Cálculos",
+    "pageTitle": "Historial de Cálculos",
+    "pageDescription": "Visualice y compare sus cálculos anteriores de NSR",
+    "noHistory": "Sin cálculos en el historial",
+    "noHistoryDescription": "Sus cálculos se guardarán automáticamente aquí",
+    "compare": "Comparar",
+    "clearAll": "Borrar Todo",
+    "confirmClear": "¿Está seguro de que desea borrar todo el historial?",
+    "searchPlaceholder": "Buscar por mina o área...",
+    "selectedCount": "{count} seleccionado(s)",
+    "compareSelected": "Comparar Seleccionados",
+    "showingCount": "Mostrando {shown} de {total}"
+  },
+  "sensitivity": {
+    "title": "Análisis de Sensibilidad",
+    "pageTitle": "Análisis de Sensibilidad",
+    "pageDescription": "Analice cómo las variaciones en los parámetros afectan el NSR",
+    "tip": "Consejo",
+    "tipDescription": "Para un análisis más preciso, primero calcule el NSR en la página principal y luego acceda a la sensibilidad.",
+    "selectVariable": "Seleccione la variable",
+    "cuGrade": "Ley de Cu",
+    "auGrade": "Ley de Au",
+    "cuPrice": "Precio Cu",
+    "auPrice": "Precio Au",
+    "variationRange": "Rango de variación",
+    "runAnalysis": "Ejecutar Análisis",
+    "calculating": "Calculando...",
+    "baseNSR": "NSR Base",
+    "nsrRange": "Rango de NSR",
+    "breakEven": "Punto de equilibrio",
+    "fromBase": "del base",
+    "notInRange": "Fuera del rango",
+    "sensitivityChart": "Gráfico de Sensibilidad",
+    "variation": "Variación",
+    "breakEvenLine": "Línea de equilibrio"
+  },
+  "stats": {
+    "copper": "Cobre",
+    "gold": "Oro",
+    "silver": "Plata",
+    "lastUpdate": "Última actualización"
   },
   "admin": {
     "title": "Administración",
@@ -209,6 +286,9 @@
     "generic": "Ocurrió un error",
     "nsrCalculation": "Error al calcular NSR",
     "scenarioCalculation": "Error al calcular escenarios",
-    "exportCSV": "Error al exportar CSV"
+    "exportCSV": "Error al exportar CSV",
+    "calculationFailed": "Error en el cálculo",
+    "scenarioFailed": "Error en los escenarios",
+    "exportFailed": "Error en la exportación"
   }
 }
