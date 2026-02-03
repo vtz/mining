@@ -2,6 +2,7 @@
 
 from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 from functools import lru_cache
 
 
@@ -18,8 +19,16 @@ class Settings(BaseSettings):
     app_version: str = "0.2.0"
     debug: bool = False
 
-    # Database
+    # Database (Railway uses DATABASE_URL)
     database_url: str = "postgresql://postgres:postgres@localhost:5432/nsr"
+    
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def fix_database_url(cls, v: str) -> str:
+        """Convert postgres:// to postgresql:// for SQLAlchemy compatibility."""
+        if v and v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v
 
     # Security
     secret_key: str = "dev-secret-key-change-in-production"
