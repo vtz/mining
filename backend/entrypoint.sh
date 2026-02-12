@@ -1,11 +1,14 @@
 #!/bin/sh
 
-echo "=== ENTRYPOINT v2 ==="
-echo "PORT=${PORT}"
+# Redirect all output to stderr so Railway shows it
+exec 1>&2
 
-# Skip seed for now - just start the server
+echo "=== ENTRYPOINT v3 ==="
+echo "PORT=${PORT}"
+echo "DATABASE_URL length: ${#DATABASE_URL}"
+
 echo "Running migrations..."
 alembic upgrade head
 
 echo "Starting uvicorn..."
-uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
