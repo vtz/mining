@@ -25,9 +25,16 @@ class Settings(BaseSettings):
     @field_validator("database_url", mode="before")
     @classmethod
     def fix_database_url(cls, v: str) -> str:
-        """Convert postgres:// to postgresql:// for SQLAlchemy compatibility."""
-        if v and v.startswith("postgres://"):
-            return v.replace("postgres://", "postgresql://", 1)
+        """Convert postgres:// to postgresql:// and add sslmode for Railway."""
+        if not v:
+            return v
+        # Fix postgres:// to postgresql://
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql://", 1)
+        # Add sslmode=disable for Railway internal connections if not present
+        if "sslmode=" not in v and "ssl=" not in v:
+            separator = "&" if "?" in v else "?"
+            v = f"{v}{separator}sslmode=disable"
         return v
 
     # Security
