@@ -360,3 +360,183 @@ export function buildMinesData(mines: Mine[]): Record<string, string[]> {
   
   return minesData;
 }
+
+// ──────────────────────────────────────────────────────────
+// Goal Seek
+// ──────────────────────────────────────────────────────────
+
+export interface GoalSeekRequest {
+  mine: string;
+  area: string;
+  cu_grade: number;
+  au_grade: number;
+  ag_grade: number;
+  ore_tonnage?: number;
+  mine_dilution?: number;
+  ore_recovery?: number;
+  cu_price?: number;
+  au_price?: number;
+  ag_price?: number;
+  cu_payability?: number;
+  cu_tc?: number;
+  cu_rc?: number;
+  cu_freight?: number;
+  target_variable: string;
+  target_nsr: number;
+}
+
+export interface GoalSeekResponse {
+  target_variable: string;
+  target_variable_unit: string;
+  target_nsr: number;
+  threshold_value: number;
+  current_value: number;
+  current_nsr: number;
+  delta_percent: number;
+  is_currently_viable: boolean;
+  converged: boolean;
+  iterations: number;
+  tolerance_achieved: number;
+  bound_hit: string; // "lower", "upper", or ""
+}
+
+export interface GoalSeekVariable {
+  name: string;
+  direction: string;
+  unit: string;
+  lower_bound: number;
+  upper_bound: number;
+}
+
+export async function computeGoalSeek(request: GoalSeekRequest): Promise<GoalSeekResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/compute/goal-seek`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to compute Goal Seek');
+  }
+
+  return response.json();
+}
+
+export async function fetchGoalSeekVariables(): Promise<GoalSeekVariable[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/compute/goal-seek/variables`);
+  if (!response.ok) throw new Error('Failed to fetch variables');
+  const data = await response.json();
+  return data.variables;
+}
+
+// ──────────────────────────────────────────────────────────
+// Goal Seek Scenarios (CRUD)
+// ──────────────────────────────────────────────────────────
+
+export interface GoalSeekScenario {
+  id: string;
+  name: string;
+  mine_id: string | null;
+  base_inputs: Record<string, unknown>;
+  target_variable: string;
+  target_nsr: number;
+  threshold_value: number;
+  alert_enabled: boolean;
+  alert_email: string | null;
+  alert_frequency: string;
+  alert_triggered_at: string | null;
+  last_nsr_value: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScenarioCreateRequest {
+  name: string;
+  mine_id?: string;
+  base_inputs: Record<string, unknown>;
+  target_variable: string;
+  target_nsr: number;
+  threshold_value: number;
+  alert_enabled?: boolean;
+  alert_email?: string;
+  alert_frequency?: string;
+}
+
+export interface NsrSnapshot {
+  timestamp: string;
+  nsr_per_tonne: number;
+  nsr_cu: number;
+  nsr_au: number;
+  nsr_ag: number;
+  cu_price: number;
+  au_price: number;
+  ag_price: number;
+  cu_tc: number;
+  cu_rc: number;
+  cu_freight: number;
+  is_viable: boolean;
+}
+
+export interface SnapshotHistoryResponse {
+  scenario_id: string;
+  target_nsr: number;
+  snapshots: NsrSnapshot[];
+  total: number;
+}
+
+export async function createGoalSeekScenario(request: ScenarioCreateRequest): Promise<GoalSeekScenario> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/goal-seek-scenarios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to create scenario');
+  }
+  return response.json();
+}
+
+export async function listGoalSeekScenarios(): Promise<GoalSeekScenario[]> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/goal-seek-scenarios`);
+  if (!response.ok) throw new Error('Failed to list scenarios');
+  const data = await response.json();
+  return data.scenarios;
+}
+
+export async function deleteGoalSeekScenario(id: string): Promise<void> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/goal-seek-scenarios/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete scenario');
+}
+
+export async function updateScenarioAlert(
+  id: string,
+  update: { alert_enabled?: boolean; alert_email?: string; alert_frequency?: string }
+): Promise<GoalSeekScenario> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/goal-seek-scenarios/${id}/alert`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(update),
+  });
+  if (!response.ok) throw new Error('Failed to update alert');
+  return response.json();
+}
+
+export async function fetchScenarioHistory(
+  id: string,
+  from?: string,
+  to?: string,
+  limit?: number
+): Promise<SnapshotHistoryResponse> {
+  const url = new URL(`${API_BASE_URL}/api/v1/goal-seek-scenarios/${id}/history`);
+  if (from) url.searchParams.set('from', from);
+  if (to) url.searchParams.set('to', to);
+  if (limit) url.searchParams.set('limit', limit.toString());
+
+  const response = await authFetch(url.toString());
+  if (!response.ok) throw new Error('Failed to fetch history');
+  return response.json();
+}

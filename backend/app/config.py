@@ -57,6 +57,10 @@ class Settings(BaseSettings):
 
     # Metal Price API (get free key at metalpriceapi.com)
     metal_price_api_key: str = ""
+
+    # Resend (email alerts)
+    resend_api_key: str = ""
+    alert_from_email: str = "alerts@nsr-calculator.com"
     
     # Initial admin (created on first run)
     initial_admin_email: Optional[str] = None

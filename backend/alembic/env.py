@@ -9,7 +9,7 @@ from alembic import context
 
 # Import models to register them with Base
 from app.db.session import Base
-from app.models import User, Region, Mine, UserMine  # noqa: F401
+from app.models import User, Region, Mine, UserMine, GoalSeekScenario, NsrSnapshot  # noqa: F401
 from app.config import get_settings
 
 # this is the Alembic Config object

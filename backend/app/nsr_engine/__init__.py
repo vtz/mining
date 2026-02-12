@@ -17,6 +17,12 @@ from app.nsr_engine.models import (
     MetalResult,
     DeductionsResult,
 )
+from app.nsr_engine.goal_seek import (
+    goal_seek,
+    GoalSeekResult,
+    GoalSeekError,
+    GOAL_SEEK_VARIABLES,
+)
 
 __all__ = [
     "compute_cu_recovery",
@@ -32,4 +38,8 @@ __all__ = [
     "NSRResult",
     "MetalResult",
     "DeductionsResult",
+    "goal_seek",
+    "GoalSeekResult",
+    "GoalSeekError",
+    "GOAL_SEEK_VARIABLES",
 ]

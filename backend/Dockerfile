@@ -29,5 +29,5 @@ USER appuser
 # Expose port (Railway uses dynamic PORT)
 EXPOSE 8000
 
-# Run uvicorn directly - no entrypoint
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run migrations, seed demo data, and start server
+CMD ["sh", "-c", "alembic upgrade head && python scripts/seed_snapshots.py && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
