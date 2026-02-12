@@ -1,5 +1,8 @@
-# Backend Dockerfile
+# Backend Dockerfile - v3 force rebuild
 FROM python:3.11-slim
+
+# Force rebuild timestamp: 2026-02-12-v1
+ENV BUILD_VERSION=3
 
 WORKDIR /app
 
