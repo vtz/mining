@@ -35,9 +35,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
+# Railway uses dynamic PORT
 EXPOSE 3000
 
-ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# Use shell form to allow PORT substitution
+CMD ["sh", "-c", "PORT=${PORT:-3000} node server.js"]
