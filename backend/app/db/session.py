@@ -17,10 +17,12 @@ elif DATABASE_URL.startswith("sqlite://"):
     DATABASE_URL = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://", 1)
 
 # Create async engine
+# For Railway internal connections, disable SSL
 engine = create_async_engine(
     DATABASE_URL,
     echo=settings.debug,
     future=True,
+    connect_args={"ssl": False} if "railway.internal" in DATABASE_URL else {},
 )
 
 # Create async session factory
