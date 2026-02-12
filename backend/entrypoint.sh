@@ -1,14 +1,11 @@
 #!/bin/sh
 
-echo "=== ENTRYPOINT START ==="
-echo "PORT: ${PORT:-8000}"
-echo "DATABASE_URL set: $(if [ -n "$DATABASE_URL" ]; then echo 'yes'; else echo 'NO!'; fi)"
+echo "=== ENTRYPOINT v2 ==="
+echo "PORT=${PORT}"
 
-echo "Running database migrations..."
-alembic upgrade head || { echo "Migration failed!"; exit 1; }
+# Skip seed for now - just start the server
+echo "Running migrations..."
+alembic upgrade head
 
-echo "Seeding database..."
-python scripts/seed_data.py || echo "Seed skipped or failed (continuing...)"
-
-echo "Starting server on port ${PORT:-8000}..."
-exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+echo "Starting uvicorn..."
+uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
