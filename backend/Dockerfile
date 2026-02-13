@@ -26,8 +26,11 @@ RUN chmod +x entrypoint.sh
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
+# Ensure app module is importable by scripts
+ENV PYTHONPATH=/app
+
 # Expose port (Railway uses dynamic PORT)
 EXPOSE 8000
 
-# Run migrations, seed demo data, and start server
-CMD ["sh", "-c", "alembic upgrade head && python scripts/seed_snapshots.py && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+# Run migrations, seed demo data (non-blocking), and start server
+CMD ["sh", "-c", "alembic upgrade head && python scripts/seed_snapshots.py || echo 'Seed script failed, continuing...' && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
