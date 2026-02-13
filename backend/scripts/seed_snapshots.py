@@ -103,19 +103,14 @@ def main():
             session.execute(text("DELETE FROM goal_seek_scenarios WHERE id = :sid"), {"sid": str(sid)})
             print(f"Deleted old scenario: {sid}")
 
-        # Find the Admin Dev user (or first user)
-        row = session.execute(
-            text("SELECT id FROM users WHERE email = 'admin@example.com' LIMIT 1")
-        ).fetchone()
-        if not row:
-            row = session.execute(text("SELECT id FROM users LIMIT 1")).fetchone()
-        if not row:
+        # Get ALL users so every user sees the demo scenario
+        users = session.execute(text("SELECT id, email FROM users")).fetchall()
+        if not users:
             print("No users found. Login first to create a user.")
             return
-        user_id = row[0]
-        print(f"Using user: {user_id}")
+        print(f"Found {len(users)} users: {[r[1] for r in users]}")
 
-        # Scenario base inputs
+        # Scenario params
         base_inputs = {
             "mine": "Vermelhos UG",
             "area": "Vermelhos Sul",
@@ -125,8 +120,9 @@ def main():
         }
         target_nsr = 0.0  # break-even
         target_variable = "ag_price"
+        base_inputs_json = json.dumps(base_inputs)
 
-        # Compute threshold for ag_price at target_nsr
+        # Compute threshold
         from app.nsr_engine.goal_seek import goal_seek
         nsr_input = NSRInput(
             mine="Vermelhos UG", area="Vermelhos Sul",
@@ -135,37 +131,13 @@ def main():
         )
         gs_result = goal_seek(nsr_input, "ag_price", target_nsr)
         threshold = gs_result.threshold_value
-        print(f"Goal Seek: Ag needs to be ${threshold:.2f}/oz for NSR={target_nsr}/t")
 
-        # Create scenario
-        scenario_id = uuid.uuid4()
-        base_inputs_json = json.dumps(base_inputs)
-        session.execute(
-            text("""
-                INSERT INTO goal_seek_scenarios 
-                (id, user_id, name, base_inputs, target_variable, target_nsr, 
-                 threshold_value, alert_enabled, alert_frequency, created_at, updated_at)
-                VALUES (:id, :user_id, :name, CAST(:base_inputs AS json), :target_variable, 
-                        :target_nsr, :threshold_value, true, 'daily', now(), now())
-            """),
-            {
-                "id": str(scenario_id),
-                "user_id": str(user_id),
-                "name": "Ag Price Viability - Vermelhos Sul (Historical)",
-                "base_inputs": base_inputs_json,
-                "target_variable": target_variable,
-                "target_nsr": target_nsr,
-                "threshold_value": threshold,
-            },
-        )
-        print(f"Created scenario: {scenario_id}")
-
-        # Generate daily snapshots for the past year
+        # Pre-compute daily snapshots once (shared across all users' scenarios)
+        print("Computing daily NSR snapshots...")
         start_date = datetime(2025, 2, 12, 12, 0, 0, tzinfo=timezone.utc)
         end_date = datetime(2026, 2, 12, 12, 0, 0, tzinfo=timezone.utc)
+        daily_data = []
         current = start_date
-
-        count = 0
         while current <= end_date:
             ag_base = get_monthly_price(AG_PRICES_MONTHLY, current)
             cu_base = get_monthly_price(CU_PRICES_MONTHLY, current)
@@ -175,48 +147,78 @@ def main():
             cu_price = interpolate_price(cu_base, current.day, 30)
             au_price = interpolate_price(au_base, current.day, 30)
 
-            # Compute NSR with these prices
             inp = NSRInput(
                 mine="Vermelhos UG", area="Vermelhos Sul",
                 cu_grade=1.4, au_grade=0.23, ag_grade=2.33,
                 cu_price=cu_price, au_price=au_price, ag_price=ag_price,
             )
             result = compute_nsr_complete(inp)
-            is_viable = result.nsr_per_tonne >= target_nsr
+            daily_data.append({
+                "ts": current.isoformat(),
+                "nsr": result.nsr_per_tonne,
+                "nsr_cu": result.nsr_cu,
+                "nsr_au": result.nsr_au,
+                "nsr_ag": result.nsr_ag,
+                "cu": cu_price,
+                "au": au_price,
+                "ag": ag_price,
+                "viable": result.nsr_per_tonne >= target_nsr,
+            })
+            current += timedelta(days=1)
+        print(f"Computed {len(daily_data)} daily data points")
 
-            snapshot_id = uuid.uuid4()
+        # Create scenario + snapshots for each user
+        for user_id, user_email in users:
+            scenario_id = uuid.uuid4()
             session.execute(
                 text("""
-                    INSERT INTO nsr_snapshots
-                    (id, scenario_id, timestamp, nsr_per_tonne, nsr_cu, nsr_au, nsr_ag,
-                     cu_price, au_price, ag_price, cu_tc, cu_rc, cu_freight, is_viable)
-                    VALUES (:id, :scenario_id, :ts, :nsr, :nsr_cu, :nsr_au, :nsr_ag,
-                            :cu, :au, :ag, :tc, :rc, :freight, :viable)
+                    INSERT INTO goal_seek_scenarios 
+                    (id, user_id, name, base_inputs, target_variable, target_nsr, 
+                     threshold_value, alert_enabled, alert_frequency, created_at, updated_at)
+                    VALUES (:id, :user_id, :name, CAST(:base_inputs AS json), :target_variable, 
+                            :target_nsr, :threshold_value, false, 'daily', now(), now())
                 """),
                 {
-                    "id": str(snapshot_id),
-                    "scenario_id": str(scenario_id),
-                    "ts": current.isoformat(),
-                    "nsr": result.nsr_per_tonne,
-                    "nsr_cu": result.nsr_cu,
-                    "nsr_au": result.nsr_au,
-                    "nsr_ag": result.nsr_ag,
-                    "cu": cu_price,
-                    "au": au_price,
-                    "ag": ag_price,
-                    "tc": DEFAULT_CU_TC,
-                    "rc": DEFAULT_CU_RC,
-                    "freight": DEFAULT_CU_FREIGHT,
-                    "viable": is_viable,
+                    "id": str(scenario_id),
+                    "user_id": str(user_id),
+                    "name": "Ag Price Viability - Vermelhos Sul (Historical)",
+                    "base_inputs": base_inputs_json,
+                    "target_variable": target_variable,
+                    "target_nsr": target_nsr,
+                    "threshold_value": threshold,
                 },
             )
-            count += 1
-            current += timedelta(days=1)
+
+            for day in daily_data:
+                session.execute(
+                    text("""
+                        INSERT INTO nsr_snapshots
+                        (id, scenario_id, timestamp, nsr_per_tonne, nsr_cu, nsr_au, nsr_ag,
+                         cu_price, au_price, ag_price, cu_tc, cu_rc, cu_freight, is_viable)
+                        VALUES (:id, :scenario_id, :ts, :nsr, :nsr_cu, :nsr_au, :nsr_ag,
+                                :cu, :au, :ag, :tc, :rc, :freight, :viable)
+                    """),
+                    {
+                        "id": str(uuid.uuid4()),
+                        "scenario_id": str(scenario_id),
+                        "ts": day["ts"],
+                        "nsr": day["nsr"],
+                        "nsr_cu": day["nsr_cu"],
+                        "nsr_au": day["nsr_au"],
+                        "nsr_ag": day["nsr_ag"],
+                        "cu": day["cu"],
+                        "au": day["au"],
+                        "ag": day["ag"],
+                        "tc": DEFAULT_CU_TC,
+                        "rc": DEFAULT_CU_RC,
+                        "freight": DEFAULT_CU_FREIGHT,
+                        "viable": day["viable"],
+                    },
+                )
+            print(f"Created scenario + {len(daily_data)} snapshots for user {user_email}")
 
         session.commit()
-        print(f"Created {count} daily snapshots from {start_date.date()} to {end_date.date()}")
-        print(f"Scenario ID: {scenario_id}")
-        print("Done! Refresh the Goal Seek page to see the time series chart.")
+        print(f"Done! Created scenarios for {len(users)} users.")
 
     except Exception as e:
         session.rollback()
