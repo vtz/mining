@@ -386,6 +386,7 @@
     "showing": "Mostrando",
     "of": "de",
     "noBlocks": "Nenhum bloco encontrado com esses filtros.",
+    "noBlocksAtLevel": "Nenhum bloco encontrado neste nível Z. Tente outro nível.",
     "pageTitle": "Modelo de Blocos",
     "pageDescription": "Importe blocos do Deswik, calcule NSR por bloco e monitore a viabilidade ao longo do tempo.",
     "featureDisabled": "O Modelo de Blocos não está habilitado para nenhuma das suas minas.",

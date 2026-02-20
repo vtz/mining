@@ -386,6 +386,7 @@
     "showing": "Showing",
     "of": "of",
     "noBlocks": "No blocks found with these filters.",
+    "noBlocksAtLevel": "No blocks found at this Z level. Try a different level.",
     "pageTitle": "Block Model",
     "pageDescription": "Import Deswik blocks, calculate NSR per block, and monitor viability over time.",
     "featureDisabled": "Block Model is not enabled for any of your mines.",

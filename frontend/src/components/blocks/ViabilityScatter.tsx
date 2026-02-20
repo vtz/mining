@@ -45,6 +45,8 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
 export default function ViabilityScatter({ blocks, cutoffCost }: ViabilityScatterProps) {
   const t = useTranslations('blocks');
 
+  const hasNsrData = useMemo(() => blocks.some((b) => b.nsr_per_tonne !== undefined), [blocks]);
+
   const { viableData, inviableData, marginalData } = useMemo(() => {
     const viable: ScatterPoint[] = [];
     const inviable: ScatterPoint[] = [];
@@ -88,7 +90,17 @@ export default function ViabilityScatter({ blocks, cutoffCost }: ViabilityScatte
         </p>
       </div>
       <div className="p-4">
-        <ResponsiveContainer width="100%" height={400}>
+        {!hasNsrData && blocks.length > 0 && (
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+            <p>{t('noSnapshots')}</p>
+          </div>
+        )}
+        {blocks.length === 0 && (
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+            <p>{t('noBlocks')}</p>
+          </div>
+        )}
+        {hasNsrData && <ResponsiveContainer width="100%" height={400}>
           <ScatterChart margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
@@ -120,7 +132,7 @@ export default function ViabilityScatter({ blocks, cutoffCost }: ViabilityScatte
             <Scatter name={t('marginal')} data={marginalData} fill="#fbbf24" fillOpacity={0.7} />
             <Scatter name={t('viable')} data={viableData} fill="#22c55e" fillOpacity={0.7} />
           </ScatterChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer>}
 
         {/* Stats bar */}
         <div className="flex items-center gap-6 mt-4 text-xs text-gray-600 dark:text-gray-400">

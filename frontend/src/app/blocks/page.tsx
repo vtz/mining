@@ -97,10 +97,12 @@ function BlocksPage() {
 
   const loadScatterData = async (importId: string) => {
     try {
-      const [blocksData, statsData] = await Promise.all([
-        listBlocks(importId, { page_size: 1000 }),
-        fetchBlockStats(importId),
-      ]);
+      const statsData = await fetchBlockStats(importId);
+      const snapshotDate = statsData.snapshot_date;
+      const blocksData = await listBlocks(importId, {
+        page_size: 1000,
+        snapshot_date: snapshotDate,
+      });
       setScatterBlocks(blocksData.blocks);
       setScatterCutoff(statsData.cutoff_cost);
     } catch {

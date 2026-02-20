@@ -3,13 +3,13 @@
 import csv
 import io
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, func, distinct
+from sqlalchemy import select, delete, func, distinct, cast, Date
 from starlette.responses import StreamingResponse
 
 from app.db.session import get_db
@@ -28,6 +28,11 @@ from app.services.block_import import (
 from app.services.block_nsr import calculate_nsr_for_import
 
 router = APIRouter(prefix="/blocks", tags=["Blocks"])
+
+
+def _parse_snapshot_date(snapshot: str) -> date:
+    """Parse a date string (YYYY-MM-DD or full ISO datetime) into a Python date."""
+    return datetime.fromisoformat(snapshot).date() if "T" in snapshot else date.fromisoformat(snapshot)
 
 
 # ──────────────────────────────────────────────────────────
@@ -384,16 +389,16 @@ async def list_blocks(
     result = await db.execute(query)
     blocks = result.scalars().all()
 
-    # If snapshot filtering requested, get latest snapshot data
+    # Always load latest snapshot data for each block
     snapshot_data: Dict[uuid.UUID, BlockNsrSnapshot] = {}
-    if (viable_only is not None or snapshot_date) and blocks:
+    if blocks:
         block_ids = [b.id for b in blocks]
         snap_q = select(BlockNsrSnapshot).where(
             BlockNsrSnapshot.block_id.in_(block_ids)
         )
         if snapshot_date:
             snap_q = snap_q.where(
-                func.date(BlockNsrSnapshot.calculated_at) == snapshot_date
+                cast(BlockNsrSnapshot.calculated_at, Date) == _parse_snapshot_date(snapshot_date)
             )
         snap_q = snap_q.order_by(BlockNsrSnapshot.calculated_at.desc())
         snap_result = await db.execute(snap_q)
@@ -545,7 +550,7 @@ async def get_heatmap(
     )
     if snapshot:
         snap_q = snap_q.where(
-            func.date(BlockNsrSnapshot.calculated_at) == snapshot
+            cast(BlockNsrSnapshot.calculated_at, Date) == _parse_snapshot_date(snapshot)
         )
     snap_q = snap_q.order_by(BlockNsrSnapshot.calculated_at.desc())
 
@@ -558,7 +563,7 @@ async def get_heatmap(
             snap_map[s.block_id] = s
             cutoff = s.cutoff_cost
             if not snap_date:
-                snap_date = s.calculated_at.isoformat()
+                snap_date = s.calculated_at.strftime("%Y-%m-%d")
 
     heatmap_blocks = []
     for b in blocks:
@@ -618,7 +623,7 @@ async def get_stats(
     )
     if snapshot:
         snap_q = snap_q.where(
-            func.date(BlockNsrSnapshot.calculated_at) == snapshot
+            cast(BlockNsrSnapshot.calculated_at, Date) == _parse_snapshot_date(snapshot)
         )
     snap_q = snap_q.order_by(BlockNsrSnapshot.calculated_at.desc())
 
@@ -661,7 +666,7 @@ async def get_stats(
         min_nsr = min(min_nsr, s.nsr_per_tonne)
         max_nsr = max(max_nsr, s.nsr_per_tonne)
         if not snap_date:
-            snap_date = s.calculated_at.isoformat()
+            snap_date = s.calculated_at.strftime("%Y-%m-%d")
 
         if s.is_viable:
             if s.nsr_per_tonne <= marginal_upper:
@@ -807,7 +812,7 @@ async def export_csv(
     )
     if snapshot:
         snap_q = snap_q.where(
-            func.date(BlockNsrSnapshot.calculated_at) == snapshot
+            cast(BlockNsrSnapshot.calculated_at, Date) == _parse_snapshot_date(snapshot)
         )
     snap_q = snap_q.order_by(BlockNsrSnapshot.calculated_at.desc())
     snap_result = await db.execute(snap_q)

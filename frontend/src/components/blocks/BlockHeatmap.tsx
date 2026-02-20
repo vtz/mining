@@ -29,10 +29,12 @@ export default function BlockHeatmap({ importId, onBlockSelect }: BlockHeatmapPr
   const [heatmapData, setHeatmapData] = useState<HeatmapResponse | null>(null);
   const [hoveredBlock, setHoveredBlock] = useState<HeatmapBlock | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Load levels and snapshots
   useEffect(() => {
     async function load() {
+      setError(null);
       try {
         const [lvl, snap] = await Promise.all([
           listBlockLevels(importId),
@@ -46,8 +48,8 @@ export default function BlockHeatmap({ importId, onBlockSelect }: BlockHeatmapPr
         if (snap.snapshots.length > 0) {
           setCurrentSnapshot(snap.snapshots[0]);
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        setError(`Failed to load levels/snapshots: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     load();
@@ -57,9 +59,13 @@ export default function BlockHeatmap({ importId, onBlockSelect }: BlockHeatmapPr
   useEffect(() => {
     if (currentLevel === null) return;
     setLoading(true);
+    setError(null);
     fetchHeatmapData(importId, currentLevel, currentSnapshot || undefined)
       .then(setHeatmapData)
-      .catch(() => setHeatmapData(null))
+      .catch((err) => {
+        setHeatmapData(null);
+        setError(`Failed to load heatmap: ${err instanceof Error ? err.message : String(err)}`);
+      })
       .finally(() => setLoading(false));
   }, [importId, currentLevel, currentSnapshot]);
 
@@ -145,6 +151,20 @@ export default function BlockHeatmap({ importId, onBlockSelect }: BlockHeatmapPr
             </div>
           )}
         </div>
+
+        {/* Error message */}
+        {error && (
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
+            {error}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && !heatmapData?.blocks.length && currentLevel !== null && (
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            <p>{t('noBlocksAtLevel')}</p>
+          </div>
+        )}
 
         {/* Heatmap SVG */}
         <div className="relative border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
