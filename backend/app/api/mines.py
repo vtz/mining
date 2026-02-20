@@ -14,8 +14,10 @@ from app.models.mine import Mine
 from app.models.region import Region
 from app.models.user import User
 from app.models.user_mine import UserMine
+from app.models.mine_feature import MineFeature
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.permissions import get_accessible_mine_ids, check_mine_access
+from app.features import FEATURE_CATALOG
 
 router = APIRouter(prefix="/mines", tags=["mines"])
 
@@ -60,6 +62,7 @@ class MineResponse(BaseModel):
     recovery_params: Optional[Dict[str, Any]]
     commercial_terms: Optional[Dict[str, Any]]
     user_role: Optional[str] = None
+    enabled_features: List[str] = []
     
     class Config:
         from_attributes = True
@@ -101,6 +104,26 @@ async def list_mines(
     result = await db.execute(query)
     mines = result.scalars().all()
     
+    # Pre-load feature toggles for all mines
+    mine_ids = [m.id for m in mines]
+    feat_result = await db.execute(
+        select(MineFeature).where(MineFeature.mine_id.in_(mine_ids))
+    )
+    feat_by_mine: Dict[uuid.UUID, Dict[str, bool]] = {}
+    for feat in feat_result.scalars().all():
+        feat_by_mine.setdefault(feat.mine_id, {})[feat.feature_key] = feat.enabled
+
+    def _enabled_features(mine_id: uuid.UUID) -> List[str]:
+        explicit = feat_by_mine.get(mine_id, {})
+        enabled = []
+        for key, catalog in FEATURE_CATALOG.items():
+            if key in explicit:
+                if explicit[key]:
+                    enabled.append(key)
+            elif catalog["default_enabled"]:
+                enabled.append(key)
+        return enabled
+
     # Get user roles for each mine
     response_mines = []
     for mine in mines:
@@ -126,6 +149,7 @@ async def list_mines(
             recovery_params=mine.recovery_params,
             commercial_terms=mine.commercial_terms,
             user_role=role,
+            enabled_features=_enabled_features(mine.id),
         ))
     
     return MineListResponse(

@@ -6,12 +6,14 @@ import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ui/ThemeProvider';
 import { useAuth } from './AuthProvider';
+import { useFeatures } from '@/hooks/useFeatures';
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ReactNode;
   badge?: string | number;
+  featureKey?: string;
 }
 
 interface SidebarProps {
@@ -24,6 +26,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const t = useTranslations('nav');
   const { user } = useAuth();
   const isAdmin = user?.is_admin ?? false;
+  const { hasFeature } = useFeatures();
 
   const navItems: NavItem[] = [
     {
@@ -52,6 +55,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
         </svg>
       ),
+      featureKey: 'goal_seek',
     },
     {
       name: t('history'),
@@ -70,7 +74,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
         </svg>
       ),
-      badge: t('soon'),
+      featureKey: 'block_model',
     },
   ];
 
@@ -151,7 +155,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2">
         <div className="space-y-1">
-          {navItems.map((item) => (
+          {navItems.filter((item) => !item.featureKey || hasFeature(item.featureKey)).map((item) => (
             <Link
               key={item.href}
               href={item.href}

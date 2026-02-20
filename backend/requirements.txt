@@ -28,5 +28,8 @@ apscheduler>=3.10.0
 # Email (viability alerts)
 resend>=2.0.0
 
+# File upload
+python-multipart>=0.0.9
+
 # Utilities
 python-dotenv>=1.0.0

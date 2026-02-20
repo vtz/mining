@@ -293,6 +293,7 @@ export interface Mine {
   recovery_params: Record<string, unknown> | null;
   commercial_terms: Record<string, unknown> | null;
   user_role: string | null;
+  enabled_features: string[];
 }
 
 export interface MineListResponse {
@@ -538,5 +539,331 @@ export async function fetchScenarioHistory(
 
   const response = await authFetch(url.toString());
   if (!response.ok) throw new Error('Failed to fetch history');
+  return response.json();
+}
+
+// ──────────────────────────────────────────────────────────
+// Block Model
+// ──────────────────────────────────────────────────────────
+
+export interface BlockImportData {
+  id: string;
+  mine_id: string;
+  mine_name: string;
+  name: string;
+  source_filename: string;
+  column_mapping: Record<string, string>;
+  block_count: number;
+  created_at: string;
+  created_by: string | null;
+}
+
+export interface BlockData {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  dx?: number;
+  dy?: number;
+  dz?: number;
+  cu_grade: number;
+  au_grade?: number;
+  ag_grade?: number;
+  density?: number;
+  tonnage?: number;
+  rock_type?: string;
+  zone?: string;
+  deswik_block_id?: string;
+  nsr_per_tonne?: number;
+  is_viable?: boolean;
+  margin?: number;
+}
+
+export interface PreviewResponse {
+  headers: string[];
+  sample_rows: string[][];
+  suggested_mapping: Record<string, string>;
+  known_fields: string[];
+}
+
+export interface HeatmapBlock {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  dx?: number;
+  dy?: number;
+  cu_grade: number;
+  tonnage?: number;
+  rock_type?: string;
+  zone?: string;
+  nsr_per_tonne: number;
+  nsr_cu: number;
+  nsr_au: number;
+  nsr_ag: number;
+  is_viable: boolean;
+  margin: number;
+}
+
+export interface HeatmapResponse {
+  import_id: string;
+  z_level: number;
+  snapshot_date: string;
+  blocks: HeatmapBlock[];
+  cutoff_cost: number;
+}
+
+export interface ViabilityTimelinePoint {
+  snapshot_date: string;
+  viable_tonnage: number;
+  marginal_tonnage: number;
+  inviable_tonnage: number;
+  viable_blocks: number;
+  marginal_blocks: number;
+  inviable_blocks: number;
+  avg_nsr: number;
+  cu_price: number;
+  au_price: number;
+  ag_price: number;
+}
+
+export interface ViabilityTimelineResponse {
+  import_id: string;
+  points: ViabilityTimelinePoint[];
+}
+
+export interface BlockStats {
+  import_id: string;
+  snapshot_date?: string;
+  total_blocks: number;
+  viable_blocks: number;
+  marginal_blocks: number;
+  inviable_blocks: number;
+  total_tonnage: number;
+  viable_tonnage: number;
+  marginal_tonnage: number;
+  inviable_tonnage: number;
+  avg_nsr: number;
+  min_nsr: number;
+  max_nsr: number;
+  cutoff_cost: number;
+}
+
+export interface CalculateNsrRequest {
+  cutoff_cost: number;
+  cu_price?: number;
+  au_price?: number;
+  ag_price?: number;
+}
+
+// Block Model API functions
+
+export async function uploadBlockPreview(file: File): Promise<PreviewResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await authFetch(`${API_BASE_URL}/api/v1/blocks/upload/preview`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to upload preview');
+  }
+  return response.json();
+}
+
+export async function uploadBlocks(
+  file: File,
+  mineId: string,
+  name: string,
+  columnMapping: Record<string, string>,
+): Promise<BlockImportData> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('mine_id', mineId);
+  formData.append('name', name);
+  formData.append('column_mapping', JSON.stringify(columnMapping));
+  const response = await authFetch(`${API_BASE_URL}/api/v1/blocks/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to import blocks');
+  }
+  return response.json();
+}
+
+export async function listBlockImports(mineId?: string): Promise<{ imports: BlockImportData[]; total: number }> {
+  const url = new URL(`${API_BASE_URL}/api/v1/blocks/imports`);
+  if (mineId) url.searchParams.set('mine_id', mineId);
+  const response = await authFetch(url.toString());
+  if (!response.ok) throw new Error('Failed to list imports');
+  return response.json();
+}
+
+export async function getBlockImport(importId: string): Promise<BlockImportData> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/blocks/imports/${importId}`);
+  if (!response.ok) throw new Error('Failed to get import');
+  return response.json();
+}
+
+export async function deleteBlockImport(importId: string): Promise<void> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/blocks/imports/${importId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete import');
+}
+
+export async function listBlocks(
+  importId: string,
+  params?: {
+    zone?: string;
+    rock_type?: string;
+    cu_min?: number;
+    cu_max?: number;
+    viable_only?: boolean;
+    snapshot_date?: string;
+    page?: number;
+    page_size?: number;
+  },
+): Promise<{ blocks: BlockData[]; total: number; page: number; page_size: number }> {
+  const url = new URL(`${API_BASE_URL}/api/v1/blocks/imports/${importId}/blocks`);
+  if (params) {
+    if (params.zone) url.searchParams.set('zone', params.zone);
+    if (params.rock_type) url.searchParams.set('rock_type', params.rock_type);
+    if (params.cu_min !== undefined) url.searchParams.set('cu_min', params.cu_min.toString());
+    if (params.cu_max !== undefined) url.searchParams.set('cu_max', params.cu_max.toString());
+    if (params.viable_only !== undefined) url.searchParams.set('viable_only', params.viable_only.toString());
+    if (params.snapshot_date) url.searchParams.set('snapshot_date', params.snapshot_date);
+    if (params.page) url.searchParams.set('page', params.page.toString());
+    if (params.page_size) url.searchParams.set('page_size', params.page_size.toString());
+  }
+  const response = await authFetch(url.toString());
+  if (!response.ok) throw new Error('Failed to list blocks');
+  return response.json();
+}
+
+export async function listBlockLevels(importId: string): Promise<{ levels: number[]; count: number }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/blocks/imports/${importId}/levels`);
+  if (!response.ok) throw new Error('Failed to list levels');
+  return response.json();
+}
+
+export async function calculateBlockNsr(
+  importId: string,
+  request: CalculateNsrRequest,
+): Promise<Record<string, unknown>> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/blocks/imports/${importId}/calculate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to calculate NSR');
+  }
+  return response.json();
+}
+
+export async function listBlockSnapshots(importId: string): Promise<{ snapshots: string[]; count: number }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/blocks/imports/${importId}/snapshots`);
+  if (!response.ok) throw new Error('Failed to list snapshots');
+  return response.json();
+}
+
+export async function fetchHeatmapData(
+  importId: string,
+  z: number,
+  snapshot?: string,
+): Promise<HeatmapResponse> {
+  const url = new URL(`${API_BASE_URL}/api/v1/blocks/imports/${importId}/heatmap`);
+  url.searchParams.set('z', z.toString());
+  if (snapshot) url.searchParams.set('snapshot', snapshot);
+  const response = await authFetch(url.toString());
+  if (!response.ok) throw new Error('Failed to fetch heatmap');
+  return response.json();
+}
+
+export async function fetchBlockStats(
+  importId: string,
+  snapshot?: string,
+): Promise<BlockStats> {
+  const url = new URL(`${API_BASE_URL}/api/v1/blocks/imports/${importId}/stats`);
+  if (snapshot) url.searchParams.set('snapshot', snapshot);
+  const response = await authFetch(url.toString());
+  if (!response.ok) throw new Error('Failed to fetch stats');
+  return response.json();
+}
+
+export async function fetchViabilityTimeline(importId: string): Promise<ViabilityTimelineResponse> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/blocks/imports/${importId}/viability-timeline`);
+  if (!response.ok) throw new Error('Failed to fetch timeline');
+  return response.json();
+}
+
+export async function exportBlocksCsv(importId: string, snapshot?: string): Promise<void> {
+  const url = new URL(`${API_BASE_URL}/api/v1/blocks/imports/${importId}/export`);
+  if (snapshot) url.searchParams.set('snapshot', snapshot);
+  const response = await authFetch(url.toString());
+  if (!response.ok) throw new Error('Failed to export CSV');
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = `block_nsr_export_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(blobUrl);
+}
+
+// ──────────────────────────────────────────────────────────
+// Feature Toggles
+// ──────────────────────────────────────────────────────────
+
+export interface FeatureCatalogItem {
+  key: string;
+  name: string;
+  description: string;
+  default_enabled: boolean;
+  icon: string;
+}
+
+export interface MineFeatureStatus {
+  feature_key: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  enabled_at: string | null;
+  disabled_at: string | null;
+  notes: string | null;
+  is_default: boolean;
+}
+
+export async function fetchFeatureCatalog(): Promise<{ features: FeatureCatalogItem[] }> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/features/catalog`);
+  if (!response.ok) throw new Error('Failed to fetch feature catalog');
+  return response.json();
+}
+
+export async function fetchMineFeatures(mineId: string): Promise<{ mine_id: string; features: MineFeatureStatus[] }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/features`);
+  if (!response.ok) throw new Error('Failed to fetch mine features');
+  return response.json();
+}
+
+export async function updateMineFeature(
+  mineId: string,
+  featureKey: string,
+  enabled: boolean,
+  notes?: string,
+): Promise<{ feature_key: string; mine_id: string; enabled: boolean; notes: string | null }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/features/${featureKey}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled, notes }),
+  });
+  if (!response.ok) throw new Error('Failed to update feature');
   return response.json();
 }
