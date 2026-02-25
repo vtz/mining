@@ -401,28 +401,41 @@ def compute_nsr_complete(inputs: NSRInput) -> NSRResult:
     conc_price_total = conc_price_cu + conc_price_au + conc_price_ag
 
     # Step 5: Calculate NSR per tonne of ore (by metal)
+    # nsr_total already includes Cu recovery (in conc_ratio) and selling costs (in conc_price)
     nsr_cu = conc_price_cu * conc_ratio
     nsr_au = conc_price_au * conc_ratio
     nsr_ag = conc_price_ag * conc_ratio
     nsr_total = nsr_cu + nsr_au + nsr_ag
 
-    # Step 6: Calculate NSR at Mineral Resources level (before mine factors)
-    # This represents the theoretical maximum NSR
-    nsr_mineral_resources = nsr_total / ((1 - inputs.mine_dilution) * inputs.ore_recovery)
-
-    # Step 7: Calculate NSR at Processing level (after recovery losses)
-    # Loss from metallurgical recovery
-    theoretical_nsr = nsr_total / cu_recovery if cu_recovery > 0 else nsr_total
-    recovery_loss = theoretical_nsr - nsr_total
-    nsr_processing = nsr_total  # After processing = nsr_total
-
-    # Step 8: Calculate NSR at Mine level (after dilution and ore recovery)
-    mine_factor = (1 - inputs.mine_dilution) * inputs.ore_recovery
-    nsr_mine = nsr_mineral_resources * mine_factor
-    dilution_loss = nsr_mineral_resources - nsr_mine
-
     # Final NSR per tonne
     nsr_per_tonne = nsr_total
+
+    # ── CASCADE: decompose nsr_total into Mineral Resources → Mine → Processing → Final ──
+
+    # Gross conc revenue per tonne of concentrate (before TC/RC/freight deductions)
+    gross_rev_cu = cu_price * (cu_conc_grade / 100.0) * cu_payability * LB_PER_TONNE
+    gross_rev_au = au_price * au_in_conc * TROY_OZ_PER_GRAM * au_payability if conc_ratio > 0 else 0
+    gross_rev_ag = ag_price * ag_in_conc * TROY_OZ_PER_GRAM * ag_payability if conc_ratio > 0 else 0
+
+    # Selling costs per tonne of ore = (gross - net) × conc_ratio
+    selling_costs_per_tonne = (
+        (gross_rev_cu + gross_rev_au + gross_rev_ag) - conc_price_total
+    ) * conc_ratio
+
+    # NSR Processing = after recovery, BEFORE selling costs
+    nsr_processing = nsr_total + selling_costs_per_tonne
+
+    # Recovery loss: only Cu is affected by Cu recovery; Au/Ag NSR per tonne ore is invariant
+    conc_ratio_100 = (inputs.cu_grade / 100.0) / (cu_conc_grade / 100.0) if cu_conc_grade > 0 else 0
+    recovery_loss = gross_rev_cu * conc_ratio_100 * (1 - cu_recovery)
+
+    # NSR Mine = after mine factors, BEFORE recovery and selling costs
+    nsr_mine = nsr_processing + recovery_loss
+
+    # Mineral Resources = BEFORE mine factors, recovery, and selling costs
+    mine_factor = (1 - inputs.mine_dilution) * inputs.ore_recovery
+    nsr_mineral_resources = nsr_mine / mine_factor if mine_factor > 0 else nsr_mine
+    dilution_loss = nsr_mineral_resources - nsr_mine
 
     # Calculate revenue for given tonnage
     conc_tonnage = inputs.ore_tonnage * conc_ratio
