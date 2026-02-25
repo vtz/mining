@@ -144,8 +144,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [isManualMode, setIsManualMode] = useState<boolean>(false);
 
-  // Operational costs (EBITDA)
-  const [enableEbitda, setEnableEbitda] = useState<boolean>(true);
+  // Operational costs (EBITDA — always enabled)
   const [mineCost, setMineCost] = useState<string>('28');
   const [developmentCost, setDevelopmentCost] = useState<string>('2257');
   const [developmentMeters, setDevelopmentMeters] = useState<string>('50');
@@ -298,7 +297,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const input: NSRInput = {
+    onSubmit({
       mine,
       area,
       cu_grade: metalsToShow.cu ? parseFloat(cuGrade) : 0,
@@ -310,18 +309,13 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
       cu_price: cuPrice ? parseFloat(cuPrice) : undefined,
       au_price: auPrice ? parseFloat(auPrice) : undefined,
       ag_price: agPrice ? parseFloat(agPrice) : undefined,
-    };
-
-    if (enableEbitda) {
-      input.mine_cost = mineCost ? parseFloat(mineCost) : undefined;
-      input.development_cost = developmentCost ? parseFloat(developmentCost) : undefined;
-      input.development_meters = developmentMeters ? parseFloat(developmentMeters) : undefined;
-      input.haul_cost = haulCost ? parseFloat(haulCost) : undefined;
-      input.plant_cost = plantCost ? parseFloat(plantCost) : undefined;
-      input.ga_cost = gaCost ? parseFloat(gaCost) : undefined;
-    }
-
-    onSubmit(input, primaryMetal);
+      mine_cost: mineCost ? parseFloat(mineCost) : undefined,
+      development_cost: developmentCost ? parseFloat(developmentCost) : undefined,
+      development_meters: developmentMeters ? parseFloat(developmentMeters) : undefined,
+      haul_cost: haulCost ? parseFloat(haulCost) : undefined,
+      plant_cost: plantCost ? parseFloat(plantCost) : undefined,
+      ga_cost: gaCost ? parseFloat(gaCost) : undefined,
+    }, primaryMetal);
   };
 
   // Calculate estimated NSR preview (simplified)
@@ -671,107 +665,69 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
 
             {/* Costs Tab (EBITDA) */}
             <TabPanel value="costs">
-              <div className="space-y-5">
-                {/* Toggle EBITDA */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white text-sm">
-                      {t('enableEbitda')}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {t('enableEbitdaDescription')}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={enableEbitda}
-                    onClick={() => setEnableEbitda(!enableEbitda)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      enableEbitda ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        enableEbitda ? 'translate-x-6' : 'translate-x-1'
-                      }`}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField label={t('mineCost')} tooltip={t('mineCostTooltip')}>
+                    <NumberInput
+                      value={mineCost}
+                      onChange={setMineCost}
+                      unit="$/t"
+                      step="0.01"
                     />
-                  </button>
+                  </FormField>
+
+                  <FormField label={t('haulCost')} tooltip={t('haulCostTooltip')}>
+                    <NumberInput
+                      value={haulCost}
+                      onChange={setHaulCost}
+                      unit="$/t"
+                      step="0.01"
+                    />
+                  </FormField>
+
+                  <FormField label={t('plantCost')} tooltip={t('plantCostTooltip')}>
+                    <NumberInput
+                      value={plantCost}
+                      onChange={setPlantCost}
+                      unit="$/t"
+                      step="0.01"
+                    />
+                  </FormField>
+
+                  <FormField label={t('gaCost')} tooltip={t('gaCostTooltip')}>
+                    <NumberInput
+                      value={gaCost}
+                      onChange={setGaCost}
+                      unit="$/t"
+                      step="0.01"
+                    />
+                  </FormField>
                 </div>
 
-                <AnimatePresence>
-                  {enableEbitda && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-4 overflow-hidden"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField label={t('mineCost')} tooltip={t('mineCostTooltip')}>
-                          <NumberInput
-                            value={mineCost}
-                            onChange={setMineCost}
-                            unit="$/t"
-                            step="0.01"
-                          />
-                        </FormField>
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-medium uppercase tracking-wide">
+                    {t('developmentSection')}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField label={t('developmentCost')} tooltip={t('developmentCostTooltip')}>
+                      <NumberInput
+                        value={developmentCost}
+                        onChange={setDevelopmentCost}
+                        unit="$/m"
+                        step="1"
+                      />
+                    </FormField>
 
-                        <FormField label={t('haulCost')} tooltip={t('haulCostTooltip')}>
-                          <NumberInput
-                            value={haulCost}
-                            onChange={setHaulCost}
-                            unit="$/t"
-                            step="0.01"
-                          />
-                        </FormField>
-
-                        <FormField label={t('plantCost')} tooltip={t('plantCostTooltip')}>
-                          <NumberInput
-                            value={plantCost}
-                            onChange={setPlantCost}
-                            unit="$/t"
-                            step="0.01"
-                          />
-                        </FormField>
-
-                        <FormField label={t('gaCost')} tooltip={t('gaCostTooltip')}>
-                          <NumberInput
-                            value={gaCost}
-                            onChange={setGaCost}
-                            unit="$/t"
-                            step="0.01"
-                          />
-                        </FormField>
-                      </div>
-
-                      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-medium uppercase tracking-wide">
-                          {t('developmentSection')}
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField label={t('developmentCost')} tooltip={t('developmentCostTooltip')}>
-                            <NumberInput
-                              value={developmentCost}
-                              onChange={setDevelopmentCost}
-                              unit="$/m"
-                              step="1"
-                            />
-                          </FormField>
-
-                          <FormField label={t('developmentMeters')} tooltip={t('developmentMetersTooltip')}>
-                            <NumberInput
-                              value={developmentMeters}
-                              onChange={setDevelopmentMeters}
-                              unit="m"
-                              step="1"
-                            />
-                          </FormField>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    <FormField label={t('developmentMeters')} tooltip={t('developmentMetersTooltip')}>
+                      <NumberInput
+                        value={developmentMeters}
+                        onChange={setDevelopmentMeters}
+                        unit="m"
+                        step="1"
+                      />
+                    </FormField>
+                  </div>
+                </div>
               </div>
             </TabPanel>
           </TabPanels>
