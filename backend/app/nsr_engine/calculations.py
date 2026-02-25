@@ -6,7 +6,7 @@ following the Mina Caraíba methodology.
 All functions are pure (no side effects) and deterministic.
 """
 
-from app.nsr_engine.models import NSRInput, NSRResult
+from app.nsr_engine.models import NSRInput, NSRResult, EBITDAResult
 from app.nsr_engine.constants import (
     # Conversions
     LB_PER_TONNE,
@@ -27,6 +27,12 @@ from app.nsr_engine.constants import (
     DEFAULT_CU_CONC_GRADE,
     DEFAULT_AU_RECOVERY,
     DEFAULT_AG_RECOVERY,
+    DEFAULT_MINE_COST,
+    DEFAULT_DEVELOPMENT_COST,
+    DEFAULT_DEVELOPMENT_METERS,
+    DEFAULT_HAUL_COST,
+    DEFAULT_PLANT_COST,
+    DEFAULT_GA_COST,
     # Recovery params
     RECOVERY_PARAMS,
     DEFAULT_RECOVERY_PARAMS,
@@ -273,6 +279,64 @@ def compute_deductions(
     }
 
 
+def compute_ebitda(
+    revenue: float,
+    ore_tonnage: float,
+    mine_cost: float,
+    development_cost: float,
+    development_meters: float,
+    haul_cost: float,
+    plant_cost: float,
+    ga_cost: float,
+) -> EBITDAResult:
+    """
+    Compute EBITDA from revenue and operational costs.
+
+    Args:
+        revenue: Total revenue from concentrate sales ($)
+        ore_tonnage: Ore tonnage (tonnes)
+        mine_cost: Mining cost per tonne ($/t ore)
+        development_cost: Development cost per meter ($/m)
+        development_meters: Total development meters (m)
+        haul_cost: Haul cost per tonne ($/t ore)
+        plant_cost: Plant cost per tonne ($/t ore)
+        ga_cost: G&A cost per tonne ($/t ore)
+
+    Returns:
+        EBITDAResult with full breakdown
+    """
+    mine_cost_total = mine_cost * ore_tonnage
+    development_cost_total = development_cost * development_meters
+    haul_cost_total = haul_cost * ore_tonnage
+    plant_cost_total = plant_cost * ore_tonnage
+    ga_cost_total = ga_cost * ore_tonnage
+
+    total_costs = (
+        mine_cost_total
+        + development_cost_total
+        + haul_cost_total
+        + plant_cost_total
+        + ga_cost_total
+    )
+
+    ebitda = revenue - total_costs
+    ebitda_per_tonne = ebitda / ore_tonnage if ore_tonnage > 0 else 0
+    ebitda_margin = (ebitda / revenue * 100) if revenue > 0 else 0
+
+    return EBITDAResult(
+        revenue=round(revenue, 2),
+        mine_cost_total=round(mine_cost_total, 2),
+        development_cost_total=round(development_cost_total, 2),
+        haul_cost_total=round(haul_cost_total, 2),
+        plant_cost_total=round(plant_cost_total, 2),
+        ga_cost_total=round(ga_cost_total, 2),
+        total_costs=round(total_costs, 2),
+        ebitda=round(ebitda, 2),
+        ebitda_per_tonne=round(ebitda_per_tonne, 2),
+        ebitda_margin=round(ebitda_margin, 2),
+    )
+
+
 def compute_nsr_complete(inputs: NSRInput) -> NSRResult:
     """
     Complete NSR calculation following Caraíba methodology.
@@ -364,6 +428,30 @@ def compute_nsr_complete(inputs: NSRInput) -> NSRResult:
     conc_tonnage = inputs.ore_tonnage * conc_ratio
     revenue_total = conc_price_total * conc_tonnage
 
+    # EBITDA calculation (when any cost input is provided)
+    has_costs = any(
+        v is not None
+        for v in [
+            inputs.mine_cost,
+            inputs.development_cost,
+            inputs.haul_cost,
+            inputs.plant_cost,
+            inputs.ga_cost,
+        ]
+    )
+    ebitda_result = None
+    if has_costs:
+        ebitda_result = compute_ebitda(
+            revenue=revenue_total,
+            ore_tonnage=inputs.ore_tonnage,
+            mine_cost=inputs.mine_cost if inputs.mine_cost is not None else DEFAULT_MINE_COST,
+            development_cost=inputs.development_cost if inputs.development_cost is not None else DEFAULT_DEVELOPMENT_COST,
+            development_meters=inputs.development_meters if inputs.development_meters is not None else DEFAULT_DEVELOPMENT_METERS,
+            haul_cost=inputs.haul_cost if inputs.haul_cost is not None else DEFAULT_HAUL_COST,
+            plant_cost=inputs.plant_cost if inputs.plant_cost is not None else DEFAULT_PLANT_COST,
+            ga_cost=inputs.ga_cost if inputs.ga_cost is not None else DEFAULT_GA_COST,
+        )
+
     # Build inputs_used dict
     inputs_used = {
         "mine": inputs.mine,
@@ -386,6 +474,12 @@ def compute_nsr_complete(inputs: NSRInput) -> NSRResult:
         "ag_payability": ag_payability,
         "ag_rc": ag_rc,
         "cu_conc_grade": cu_conc_grade,
+        "mine_cost": inputs.mine_cost,
+        "development_cost": inputs.development_cost,
+        "development_meters": inputs.development_meters,
+        "haul_cost": inputs.haul_cost,
+        "plant_cost": inputs.plant_cost,
+        "ga_cost": inputs.ga_cost,
     }
 
     return NSRResult(
@@ -413,6 +507,8 @@ def compute_nsr_complete(inputs: NSRInput) -> NSRResult:
         ag_recovery=round(ag_recovery, 4),
         # Revenue
         revenue_total=round(revenue_total, 2),
+        # EBITDA
+        ebitda=ebitda_result,
         # Metadata
         currency="USD",
         ore_tonnage=inputs.ore_tonnage,

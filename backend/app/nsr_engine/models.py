@@ -63,6 +63,29 @@ class NSRInput(BaseModel):
 
     cu_conc_grade: Optional[float] = Field(default=None, description="Cu concentrate grade (%)")
 
+    # Operational costs (for EBITDA)
+    mine_cost: Optional[float] = Field(default=None, ge=0, description="Mining cost ($/t ore)")
+    development_cost: Optional[float] = Field(default=None, ge=0, description="Development cost ($/meter)")
+    development_meters: Optional[float] = Field(default=None, ge=0, description="Development meters (m)")
+    haul_cost: Optional[float] = Field(default=None, ge=0, description="Haul cost ($/t ore)")
+    plant_cost: Optional[float] = Field(default=None, ge=0, description="Plant cost ($/t ore)")
+    ga_cost: Optional[float] = Field(default=None, ge=0, description="G&A cost ($/t ore)")
+
+
+class EBITDAResult(BaseModel):
+    """EBITDA calculation breakdown."""
+
+    revenue: float = Field(..., description="Total revenue ($)")
+    mine_cost_total: float = Field(..., description="Total mining cost ($)")
+    development_cost_total: float = Field(..., description="Total development cost ($)")
+    haul_cost_total: float = Field(..., description="Total haul cost ($)")
+    plant_cost_total: float = Field(..., description="Total plant cost ($)")
+    ga_cost_total: float = Field(..., description="Total G&A cost ($)")
+    total_costs: float = Field(..., description="Sum of all costs ($)")
+    ebitda: float = Field(..., description="EBITDA = Revenue - Costs ($)")
+    ebitda_per_tonne: float = Field(..., description="EBITDA per tonne ore ($/t)")
+    ebitda_margin: float = Field(..., description="EBITDA margin (%)")
+
 
 class NSRResult(BaseModel):
     """Complete NSR calculation result."""
@@ -99,6 +122,9 @@ class NSRResult(BaseModel):
     # Revenue (for given tonnage)
     revenue_total: float = Field(..., description="Total revenue ($)")
 
+    # EBITDA (optional — populated when operational costs are provided)
+    ebitda: Optional[EBITDAResult] = Field(default=None, description="EBITDA breakdown")
+
     # Metadata
     currency: str = Field(default="USD", description="Currency")
     ore_tonnage: float = Field(..., description="Input ore tonnage")
@@ -126,6 +152,7 @@ class NSRResult(BaseModel):
                 "au_recovery": 0.90,
                 "ag_recovery": 0.90,
                 "revenue_total": 2374381.28,
+                "ebitda": None,
                 "currency": "USD",
                 "ore_tonnage": 20000,
                 "formula_applied": "See NSR_REQUIREMENTS.md",

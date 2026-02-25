@@ -18,6 +18,12 @@ export interface NSRInput {
   cu_price?: number;
   au_price?: number;
   ag_price?: number;
+  mine_cost?: number;
+  development_cost?: number;
+  development_meters?: number;
+  haul_cost?: number;
+  plant_cost?: number;
+  ga_cost?: number;
 }
 
 export interface NSRResult {
@@ -51,6 +57,20 @@ export interface NSRResult {
   // Revenue
   revenue_total: number;
   
+  // EBITDA (optional — populated when operational costs are provided)
+  ebitda: {
+    revenue: number;
+    mine_cost_total: number;
+    development_cost_total: number;
+    haul_cost_total: number;
+    plant_cost_total: number;
+    ga_cost_total: number;
+    total_costs: number;
+    ebitda: number;
+    ebitda_per_tonne: number;
+    ebitda_margin: number;
+  } | null;
+
   // Metadata
   currency: string;
   ore_tonnage: number;

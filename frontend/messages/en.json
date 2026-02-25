@@ -96,7 +96,23 @@
     "silverGradeTooltip": "Silver content in grams per tonne",
     "tonnageTooltip": "Total ore tonnage to be processed",
     "primaryMetal": "Primary Metal",
-    "save": "Save"
+    "save": "Save",
+    "costs": "Costs",
+    "enableEbitda": "Calculate EBITDA",
+    "enableEbitdaDescription": "Include operational costs to calculate EBITDA",
+    "mineCost": "Mining Cost",
+    "mineCostTooltip": "Mining cost per tonne of ore",
+    "haulCost": "Haul Cost",
+    "haulCostTooltip": "Hauling cost per tonne of ore",
+    "plantCost": "Plant Cost",
+    "plantCostTooltip": "Processing plant cost per tonne of ore",
+    "gaCost": "G&A",
+    "gaCostTooltip": "General & administrative cost per tonne of ore",
+    "developmentSection": "Development",
+    "developmentCost": "Development Cost",
+    "developmentCostTooltip": "Development cost per meter of advance",
+    "developmentMeters": "Development Meters",
+    "developmentMetersTooltip": "Total planned development meters"
   },
   "results": {
     "title": "Results",
@@ -137,7 +153,15 @@
     "copyNSR": "Copy NSR value",
     "deductions": "Deductions",
     "intermediate": "Intermediate",
-    "final": "Final"
+    "final": "Final",
+    "ebitdaPerTonne": "EBITDA/t",
+    "ebitdaRevenue": "Revenue",
+    "ebitdaMineCost": "Mining Cost",
+    "ebitdaDevCost": "Development Cost",
+    "ebitdaHaulCost": "Haul Cost",
+    "ebitdaPlantCost": "Plant Cost",
+    "ebitdaGaCost": "G&A",
+    "ebitdaTotalCosts": "Total Costs"
   },
   "scenarios": {
     "comparison": "Scenario Comparison",

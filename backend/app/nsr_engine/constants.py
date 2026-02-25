@@ -68,6 +68,16 @@ DEFAULT_MINE_DILUTION = 0.14  # 14%
 DEFAULT_ORE_RECOVERY = 0.98  # 98%
 
 # =============================================================================
+# Default Operational Costs (Caraíba — from spreadsheet cells Q10-R15)
+# =============================================================================
+DEFAULT_MINE_COST = 28.0  # $/t ore
+DEFAULT_DEVELOPMENT_COST = 2257.0  # $/meter
+DEFAULT_DEVELOPMENT_METERS = 50.0  # meters
+DEFAULT_HAUL_COST = 13.57  # $/t ore
+DEFAULT_PLANT_COST = 7.40  # $/t ore
+DEFAULT_GA_COST = 5.0  # $/t ore (estimated)
+
+# =============================================================================
 # Recovery Parameters by Area (Caraíba)
 # Format: {"a": slope, "b": intercept, "fixed": optional_fixed_value}
 # Recovery (%) = a * Cu Grade (%) + b

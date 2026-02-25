@@ -74,6 +74,18 @@ class ComputeNSRRequest(BaseModel):
     cu_rc: Optional[float] = Field(default=None, ge=0, description="Refining charge Cu ($/lb)")
     cu_freight: Optional[float] = Field(default=None, ge=0, description="Freight ($/dmt)")
 
+    # Operational costs (for EBITDA calculation)
+    mine_cost: Optional[float] = Field(default=None, ge=0, description="Mining cost ($/t ore)")
+    development_cost: Optional[float] = Field(
+        default=None, ge=0, description="Development cost ($/meter)"
+    )
+    development_meters: Optional[float] = Field(
+        default=None, ge=0, description="Development meters (m)"
+    )
+    haul_cost: Optional[float] = Field(default=None, ge=0, description="Haul cost ($/t ore)")
+    plant_cost: Optional[float] = Field(default=None, ge=0, description="Plant cost ($/t ore)")
+    ga_cost: Optional[float] = Field(default=None, ge=0, description="G&A cost ($/t ore)")
+
     model_config = {
         "json_schema_extra": {
             "example": {
@@ -85,6 +97,10 @@ class ComputeNSRRequest(BaseModel):
                 "ore_tonnage": 20000,
                 "mine_dilution": 0.14,
                 "ore_recovery": 0.98,
+                "mine_cost": 28.0,
+                "haul_cost": 13.57,
+                "plant_cost": 7.4,
+                "ga_cost": 5.0,
             }
         }
     }
@@ -138,6 +154,12 @@ async def compute_nsr(request: ComputeNSRRequest) -> NSRResult:
             cu_tc=request.cu_tc,
             cu_rc=request.cu_rc,
             cu_freight=request.cu_freight,
+            mine_cost=request.mine_cost,
+            development_cost=request.development_cost,
+            development_meters=request.development_meters,
+            haul_cost=request.haul_cost,
+            plant_cost=request.plant_cost,
+            ga_cost=request.ga_cost,
         )
 
         # Compute NSR
@@ -202,6 +224,12 @@ async def compute_scenarios(
             cu_tc=request.cu_tc,
             cu_rc=request.cu_rc,
             cu_freight=request.cu_freight,
+            mine_cost=request.mine_cost,
+            development_cost=request.development_cost,
+            development_meters=request.development_meters,
+            haul_cost=request.haul_cost,
+            plant_cost=request.plant_cost,
+            ga_cost=request.ga_cost,
         )
         base_result = compute_nsr_complete(base_input)
 
@@ -232,6 +260,12 @@ async def compute_scenarios(
                 cu_tc=request.cu_tc,
                 cu_rc=request.cu_rc,
                 cu_freight=request.cu_freight,
+                mine_cost=request.mine_cost,
+                development_cost=request.development_cost,
+                development_meters=request.development_meters,
+                haul_cost=request.haul_cost,
+                plant_cost=request.plant_cost,
+                ga_cost=request.ga_cost,
             )
             
             result = compute_nsr_complete(scenario_input)

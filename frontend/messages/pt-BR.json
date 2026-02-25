@@ -96,7 +96,23 @@
     "silverGradeTooltip": "Teor de prata em gramas por tonelada",
     "tonnageTooltip": "Tonelagem total de minério a ser processado",
     "primaryMetal": "Metal Principal",
-    "save": "Salvar"
+    "save": "Salvar",
+    "costs": "Custos",
+    "enableEbitda": "Calcular EBITDA",
+    "enableEbitdaDescription": "Inclua custos operacionais para calcular o EBITDA",
+    "mineCost": "Custo de Lavra",
+    "mineCostTooltip": "Custo de mineração por tonelada de minério",
+    "haulCost": "Custo de Transporte",
+    "haulCostTooltip": "Custo de transporte por tonelada de minério",
+    "plantCost": "Custo de Planta",
+    "plantCostTooltip": "Custo de processamento na planta por tonelada de minério",
+    "gaCost": "G&A",
+    "gaCostTooltip": "Custos gerais e administrativos por tonelada de minério",
+    "developmentSection": "Desenvolvimento",
+    "developmentCost": "Custo de Desenvolvimento",
+    "developmentCostTooltip": "Custo de desenvolvimento por metro de avanço",
+    "developmentMeters": "Metros de Desenvolvimento",
+    "developmentMetersTooltip": "Total de metros de desenvolvimento previstos"
   },
   "results": {
     "title": "Resultados",
@@ -137,7 +153,15 @@
     "copyNSR": "Copiar valor NSR",
     "deductions": "Deduções",
     "intermediate": "Intermediário",
-    "final": "Final"
+    "final": "Final",
+    "ebitdaPerTonne": "EBITDA/t",
+    "ebitdaRevenue": "Receita",
+    "ebitdaMineCost": "Custo de Lavra",
+    "ebitdaDevCost": "Custo de Desenvolvimento",
+    "ebitdaHaulCost": "Custo de Transporte",
+    "ebitdaPlantCost": "Custo de Planta",
+    "ebitdaGaCost": "G&A",
+    "ebitdaTotalCosts": "Custos Totais"
   },
   "scenarios": {
     "comparison": "Comparação de Cenários",

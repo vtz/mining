@@ -96,7 +96,23 @@
     "silverGradeTooltip": "Ley de plata en gramos por tonelada",
     "tonnageTooltip": "Tonelaje total de mineral a procesar",
     "primaryMetal": "Metal Principal",
-    "save": "Guardar"
+    "save": "Guardar",
+    "costs": "Costos",
+    "enableEbitda": "Calcular EBITDA",
+    "enableEbitdaDescription": "Incluya costos operacionales para calcular el EBITDA",
+    "mineCost": "Costo de Minería",
+    "mineCostTooltip": "Costo de minería por tonelada de mineral",
+    "haulCost": "Costo de Transporte",
+    "haulCostTooltip": "Costo de transporte por tonelada de mineral",
+    "plantCost": "Costo de Planta",
+    "plantCostTooltip": "Costo de procesamiento en planta por tonelada de mineral",
+    "gaCost": "G&A",
+    "gaCostTooltip": "Costos generales y administrativos por tonelada de mineral",
+    "developmentSection": "Desarrollo",
+    "developmentCost": "Costo de Desarrollo",
+    "developmentCostTooltip": "Costo de desarrollo por metro de avance",
+    "developmentMeters": "Metros de Desarrollo",
+    "developmentMetersTooltip": "Total de metros de desarrollo planificados"
   },
   "results": {
     "title": "Resultados",
@@ -137,7 +153,15 @@
     "intermediate": "Intermedio",
     "final": "Final",
     "dilution": "Dilución",
-    "recovery": "Recuperación"
+    "recovery": "Recuperación",
+    "ebitdaPerTonne": "EBITDA/t",
+    "ebitdaRevenue": "Ingreso",
+    "ebitdaMineCost": "Costo de Minería",
+    "ebitdaDevCost": "Costo de Desarrollo",
+    "ebitdaHaulCost": "Costo de Transporte",
+    "ebitdaPlantCost": "Costo de Planta",
+    "ebitdaGaCost": "G&A",
+    "ebitdaTotalCosts": "Costos Totales"
   },
   "scenarios": {
     "comparison": "Comparación de Escenarios",
