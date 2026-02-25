@@ -136,6 +136,16 @@ export default function NSRResult({ result, primaryMetal = 'Cu' }: NSRResultProp
             <AnimatedValue value={result.nsr_per_tonne} />
           </div>
           <p className="text-blue-200 mt-1">/t ore</p>
+
+          {result.ebitda && (
+            <div className="mt-3">
+              <span className={`text-lg font-semibold ${
+                result.ebitda.ebitda_per_tonne >= 0 ? 'text-emerald-300' : 'text-red-300'
+              }`}>
+                EBITDA/t: {formatCurrency(result.ebitda.ebitda_per_tonne)}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="relative mt-8 grid grid-cols-2 gap-4">
