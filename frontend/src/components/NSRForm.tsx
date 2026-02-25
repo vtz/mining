@@ -145,7 +145,7 @@ export default function NSRForm({ onSubmit, isLoading }: NSRFormProps) {
   const [isManualMode, setIsManualMode] = useState<boolean>(false);
 
   // Operational costs (EBITDA)
-  const [enableEbitda, setEnableEbitda] = useState<boolean>(false);
+  const [enableEbitda, setEnableEbitda] = useState<boolean>(true);
   const [mineCost, setMineCost] = useState<string>('28');
   const [developmentCost, setDevelopmentCost] = useState<string>('2257');
   const [developmentMeters, setDevelopmentMeters] = useState<string>('50');

@@ -149,112 +149,6 @@ export default function NSRResult({ result, primaryMetal = 'Cu' }: NSRResultProp
         </div>
       </motion.div>
 
-      {/* EBITDA Card */}
-      {result.ebitda && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6"
-        >
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            EBITDA
-          </h3>
-
-          {/* EBITDA headline */}
-          <div className={`rounded-xl p-4 mb-4 ${
-            result.ebitda.ebitda >= 0 
-              ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' 
-              : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">EBITDA</p>
-                <p className={`text-3xl font-bold ${
-                  result.ebitda.ebitda >= 0 
-                    ? 'text-emerald-600 dark:text-emerald-400' 
-                    : 'text-red-600 dark:text-red-400'
-                }`}>
-                  {formatCurrency(result.ebitda.ebitda, 0)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaPerTonne')}</p>
-                <p className={`text-xl font-bold ${
-                  result.ebitda.ebitda_per_tonne >= 0 
-                    ? 'text-emerald-600 dark:text-emerald-400' 
-                    : 'text-red-600 dark:text-red-400'
-                }`}>
-                  {formatCurrency(result.ebitda.ebitda_per_tonne)}/t
-                </p>
-              </div>
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all ${
-                    result.ebitda.ebitda_margin >= 0 ? 'bg-emerald-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${Math.min(Math.max(result.ebitda.ebitda_margin, 0), 100)}%` }}
-                />
-              </div>
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                {formatNumber(result.ebitda.ebitda_margin, 1)}%
-              </span>
-            </div>
-          </div>
-
-          {/* Cost breakdown */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaRevenue')}</span>
-              <span className="font-medium text-gray-900 dark:text-white">
-                {formatCurrency(result.ebitda.revenue, 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaMineCost')}</span>
-              <span className="font-medium text-red-600 dark:text-red-400">
-                -{formatCurrency(result.ebitda.mine_cost_total, 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaDevCost')}</span>
-              <span className="font-medium text-red-600 dark:text-red-400">
-                -{formatCurrency(result.ebitda.development_cost_total, 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaHaulCost')}</span>
-              <span className="font-medium text-red-600 dark:text-red-400">
-                -{formatCurrency(result.ebitda.haul_cost_total, 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaPlantCost')}</span>
-              <span className="font-medium text-red-600 dark:text-red-400">
-                -{formatCurrency(result.ebitda.plant_cost_total, 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaGaCost')}</span>
-              <span className="font-medium text-red-600 dark:text-red-400">
-                -{formatCurrency(result.ebitda.ga_cost_total, 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-t-2 border-gray-200 dark:border-gray-600 font-semibold">
-              <span className="text-sm text-gray-900 dark:text-white">{t('ebitdaTotalCosts')}</span>
-              <span className="text-red-600 dark:text-red-400">
-                -{formatCurrency(result.ebitda.total_costs, 0)}
-              </span>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
       {/* Metal Contribution - Donut Chart */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -469,6 +363,112 @@ export default function NSRResult({ result, primaryMetal = 'Cu' }: NSRResultProp
           </div>
         </div>
       </motion.div>
+
+      {/* EBITDA Card */}
+      {result.ebitda && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            EBITDA
+          </h3>
+
+          {/* EBITDA headline */}
+          <div className={`rounded-xl p-4 mb-4 ${
+            result.ebitda.ebitda >= 0 
+              ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' 
+              : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">EBITDA</p>
+                <p className={`text-3xl font-bold ${
+                  result.ebitda.ebitda >= 0 
+                    ? 'text-emerald-600 dark:text-emerald-400' 
+                    : 'text-red-600 dark:text-red-400'
+                }`}>
+                  {formatCurrency(result.ebitda.ebitda, 0)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaPerTonne')}</p>
+                <p className={`text-xl font-bold ${
+                  result.ebitda.ebitda_per_tonne >= 0 
+                    ? 'text-emerald-600 dark:text-emerald-400' 
+                    : 'text-red-600 dark:text-red-400'
+                }`}>
+                  {formatCurrency(result.ebitda.ebitda_per_tonne)}/t
+                </p>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${
+                    result.ebitda.ebitda_margin >= 0 ? 'bg-emerald-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${Math.min(Math.max(result.ebitda.ebitda_margin, 0), 100)}%` }}
+                />
+              </div>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                {formatNumber(result.ebitda.ebitda_margin, 1)}%
+              </span>
+            </div>
+          </div>
+
+          {/* Cost breakdown */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaRevenue')}</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {formatCurrency(result.ebitda.revenue, 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaMineCost')}</span>
+              <span className="font-medium text-red-600 dark:text-red-400">
+                -{formatCurrency(result.ebitda.mine_cost_total, 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaDevCost')}</span>
+              <span className="font-medium text-red-600 dark:text-red-400">
+                -{formatCurrency(result.ebitda.development_cost_total, 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaHaulCost')}</span>
+              <span className="font-medium text-red-600 dark:text-red-400">
+                -{formatCurrency(result.ebitda.haul_cost_total, 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaPlantCost')}</span>
+              <span className="font-medium text-red-600 dark:text-red-400">
+                -{formatCurrency(result.ebitda.plant_cost_total, 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('ebitdaGaCost')}</span>
+              <span className="font-medium text-red-600 dark:text-red-400">
+                -{formatCurrency(result.ebitda.ga_cost_total, 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-t-2 border-gray-200 dark:border-gray-600 font-semibold">
+              <span className="text-sm text-gray-900 dark:text-white">{t('ebitdaTotalCosts')}</span>
+              <span className="text-red-600 dark:text-red-400">
+                -{formatCurrency(result.ebitda.total_costs, 0)}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Copy NSR Button */}
       <motion.button
