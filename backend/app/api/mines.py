@@ -1,6 +1,7 @@
 """Mine CRUD endpoints."""
 
 import uuid
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,15 +16,18 @@ from app.models.region import Region
 from app.models.user import User
 from app.models.user_mine import UserMine
 from app.models.mine_feature import MineFeature
+from app.models.mineral import Mineral, MineMineral
+from app.models.parameter import ParameterDefinition, MineParameter
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.permissions import get_accessible_mine_ids, check_mine_access
 from app.features import FEATURE_CATALOG
 
 router = APIRouter(prefix="/mines", tags=["mines"])
 
+VALID_STATUSES = {"draft", "active", "suspended", "decommissioned"}
 
-# Supported primary metals
-SUPPORTED_METALS = ["Cu", "Au", "Zn", "Ni", "Fe"]
+# Kept for backward compatibility; DB minerals table is the source of truth
+SUPPORTED_METALS = ["Cu", "Au", "Zn", "Ni", "Fe", "Ag"]
 
 
 class MineCreate(BaseModel):
@@ -51,6 +55,27 @@ class UserMineAdd(BaseModel):
     role: str = Field(default="viewer", description="admin, editor, or viewer")
 
 
+class MineMineralInput(BaseModel):
+    mineral_id: str
+    is_primary: bool = False
+    recovery_rate: Optional[float] = None
+    commercial_terms: Optional[Dict[str, Any]] = None
+
+
+class MineMineralResponse(BaseModel):
+    id: str
+    mineral_id: str
+    mineral_code: str
+    mineral_name: str
+    is_primary: bool
+    recovery_rate: Optional[float]
+    commercial_terms: Optional[Dict[str, Any]]
+
+
+class SetMineMinerals(BaseModel):
+    minerals: List[MineMineralInput]
+
+
 class MineResponse(BaseModel):
     """Mine response model."""
     id: str
@@ -59,6 +84,7 @@ class MineResponse(BaseModel):
     region_name: str
     primary_metal: str
     mining_method: str
+    status: str = "active"
     recovery_params: Optional[Dict[str, Any]]
     commercial_terms: Optional[Dict[str, Any]]
     user_role: Optional[str] = None
@@ -146,6 +172,7 @@ async def list_mines(
             region_name=mine.region.name,
             primary_metal=mine.primary_metal,
             mining_method=mine.mining_method,
+            status=mine.status,
             recovery_params=mine.recovery_params,
             commercial_terms=mine.commercial_terms,
             user_role=role,
@@ -159,17 +186,21 @@ async def list_mines(
 
 
 @router.get("/metals")
-async def list_supported_metals():
-    """
-    List supported primary metals.
-    """
+async def list_supported_metals(
+    db: AsyncSession = Depends(get_db),
+):
+    """List supported primary metals from the minerals catalog."""
+    result = await db.execute(select(Mineral).order_by(Mineral.code))
+    minerals = result.scalars().all()
     return {
         "metals": [
-            {"code": "Cu", "name": "Copper", "unit": "$/lb", "implemented": True},
-            {"code": "Au", "name": "Gold", "unit": "$/oz", "implemented": False},
-            {"code": "Zn", "name": "Zinc", "unit": "$/lb", "implemented": False},
-            {"code": "Ni", "name": "Nickel", "unit": "$/lb", "implemented": False},
-            {"code": "Fe", "name": "Iron", "unit": "$/t", "implemented": False},
+            {
+                "code": m.code,
+                "name": m.name,
+                "unit": m.price_unit,
+                "implemented": m.implemented,
+            }
+            for m in minerals
         ]
     }
 
@@ -224,6 +255,7 @@ async def get_mine(
         region_name=mine.region.name,
         primary_metal=mine.primary_metal,
         mining_method=mine.mining_method,
+        status=mine.status,
         recovery_params=mine.recovery_params,
         commercial_terms=mine.commercial_terms,
         user_role=role,
@@ -236,49 +268,48 @@ async def create_mine(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin)
 ):
-    """
-    Create a new mine.
-    
-    Requires admin privileges.
-    """
-    # Validate primary metal
-    if data.primary_metal not in SUPPORTED_METALS:
+    """Create a new mine in draft status. Requires admin privileges."""
+    # Validate primary metal against the minerals catalog
+    mineral_result = await db.execute(
+        select(Mineral).where(Mineral.code == data.primary_metal)
+    )
+    mineral = mineral_result.scalar_one_or_none()
+    if not mineral:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported metal. Supported: {SUPPORTED_METALS}"
+            detail=f"Unknown mineral code '{data.primary_metal}'. Add it to the mineral catalog first.",
         )
-    
-    # Validate region exists
+
     try:
         region_uuid = uuid.UUID(data.region_id)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid region_id format"
+            detail="Invalid region_id format",
         )
     
-    result = await db.execute(
-        select(Region).where(Region.id == region_uuid)
-    )
+    result = await db.execute(select(Region).where(Region.id == region_uuid))
     region = result.scalar_one_or_none()
-    
     if not region:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Region not found"
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Region not found")
     
     mine = Mine(
         name=data.name,
         region_id=region_uuid,
         primary_metal=data.primary_metal,
         mining_method=data.mining_method,
+        status="draft",
         recovery_params=data.recovery_params,
         commercial_terms=data.commercial_terms,
         created_by=current_user.id,
     )
-    
     db.add(mine)
+    await db.flush()
+
+    db.add(MineMineral(
+        mine_id=mine.id, mineral_id=mineral.id, is_primary=True,
+    ))
+
     await db.commit()
     await db.refresh(mine)
     
@@ -289,6 +320,7 @@ async def create_mine(
         region_name=region.name,
         primary_metal=mine.primary_metal,
         mining_method=mine.mining_method,
+        status=mine.status,
         recovery_params=mine.recovery_params,
         commercial_terms=mine.commercial_terms,
         user_role="admin",
@@ -328,14 +360,16 @@ async def update_mine(
             detail="Mine not found"
         )
     
-    # Update fields
     if data.name is not None:
         mine.name = data.name
     if data.primary_metal is not None:
-        if data.primary_metal not in SUPPORTED_METALS:
+        mineral_check = await db.execute(
+            select(Mineral).where(Mineral.code == data.primary_metal)
+        )
+        if not mineral_check.scalar_one_or_none():
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unsupported metal. Supported: {SUPPORTED_METALS}"
+                status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown mineral code '{data.primary_metal}'",
             )
         mine.primary_metal = data.primary_metal
     if data.mining_method is not None:
@@ -355,6 +389,7 @@ async def update_mine(
         region_name=mine.region.name,
         primary_metal=mine.primary_metal,
         mining_method=mine.mining_method,
+        status=mine.status,
         recovery_params=mine.recovery_params,
         commercial_terms=mine.commercial_terms,
         user_role="admin",
@@ -488,3 +523,200 @@ async def remove_user_from_mine(
     
     await db.delete(user_mine)
     await db.commit()
+
+
+# ── Mine minerals ────────────────────────────────────────────────────
+
+@router.get("/{mine_id}/minerals")
+async def list_mine_minerals(
+    mine_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List minerals associated with a mine."""
+    has_access = await check_mine_access(db, current_user, mine_id)
+    if not has_access:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    result = await db.execute(
+        select(MineMineral)
+        .options(selectinload(MineMineral.mineral))
+        .where(MineMineral.mine_id == mine_id)
+    )
+    items = result.scalars().all()
+    return {
+        "minerals": [
+            MineMineralResponse(
+                id=str(mm.id),
+                mineral_id=str(mm.mineral_id),
+                mineral_code=mm.mineral.code,
+                mineral_name=mm.mineral.name,
+                is_primary=mm.is_primary,
+                recovery_rate=mm.recovery_rate,
+                commercial_terms=mm.commercial_terms,
+            )
+            for mm in items
+        ],
+        "total": len(items),
+    }
+
+
+@router.put("/{mine_id}/minerals")
+async def set_mine_minerals(
+    mine_id: uuid.UUID,
+    data: SetMineMinerals,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Replace the mineral set for a mine. Exactly one must be primary."""
+    mine = await db.get(Mine, mine_id)
+    if not mine:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Mine not found")
+
+    primary_count = sum(1 for m in data.minerals if m.is_primary)
+    if primary_count != 1:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Exactly one mineral must be marked as primary",
+        )
+
+    # Remove existing associations
+    existing = await db.execute(
+        select(MineMineral).where(MineMineral.mine_id == mine_id)
+    )
+    for mm in existing.scalars().all():
+        await db.delete(mm)
+
+    for item in data.minerals:
+        mineral_uuid = uuid.UUID(item.mineral_id)
+        mineral = await db.get(Mineral, mineral_uuid)
+        if not mineral:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail=f"Mineral {item.mineral_id} not found",
+            )
+        db.add(MineMineral(
+            mine_id=mine_id,
+            mineral_id=mineral_uuid,
+            is_primary=item.is_primary,
+            recovery_rate=item.recovery_rate,
+            commercial_terms=item.commercial_terms,
+        ))
+        if item.is_primary:
+            mine.primary_metal = mineral.code
+
+    await db.commit()
+    return await list_mine_minerals(mine_id, db, current_user)
+
+
+# ── Commissioning lifecycle ──────────────────────────────────────────
+
+@router.post("/{mine_id}/commission")
+async def commission_mine(
+    mine_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Validate completeness and transition mine from draft to active."""
+    mine = await db.get(Mine, mine_id)
+    if not mine:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Mine not found")
+    if mine.status not in ("draft", "suspended"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot commission a mine with status '{mine.status}'",
+        )
+
+    errors: List[str] = []
+
+    minerals_result = await db.execute(
+        select(MineMineral).where(MineMineral.mine_id == mine_id)
+    )
+    mine_minerals = minerals_result.scalars().all()
+    if not mine_minerals:
+        errors.append("At least one mineral must be assigned")
+    elif not any(mm.is_primary for mm in mine_minerals):
+        errors.append("Exactly one mineral must be marked as primary")
+
+    required_params = await db.execute(
+        select(ParameterDefinition).where(ParameterDefinition.is_required.is_(True))
+    )
+    for pd in required_params.scalars().all():
+        mp_result = await db.execute(
+            select(MineParameter).where(
+                MineParameter.mine_id == mine_id,
+                MineParameter.parameter_id == pd.id,
+            )
+        )
+        if not mp_result.scalar_one_or_none():
+            errors.append(f"Required parameter '{pd.name}' is missing")
+
+    if errors:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail={"errors": errors})
+
+    mine.status = "active"
+    mine.commissioned_at = datetime.now(timezone.utc)
+    mine.commissioned_by = current_user.id
+    await db.commit()
+
+    return {"message": "Mine commissioned successfully", "status": mine.status}
+
+
+@router.post("/{mine_id}/decommission")
+async def decommission_mine(
+    mine_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Transition mine to decommissioned status."""
+    mine = await db.get(Mine, mine_id)
+    if not mine:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Mine not found")
+    if mine.status == "decommissioned":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Mine is already decommissioned")
+
+    mine.status = "decommissioned"
+    await db.commit()
+    return {"message": "Mine decommissioned", "status": mine.status}
+
+
+@router.post("/{mine_id}/suspend")
+async def suspend_mine(
+    mine_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Suspend an active mine."""
+    mine = await db.get(Mine, mine_id)
+    if not mine:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Mine not found")
+    if mine.status != "active":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Only active mines can be suspended",
+        )
+
+    mine.status = "suspended"
+    await db.commit()
+    return {"message": "Mine suspended", "status": mine.status}
+
+
+@router.post("/{mine_id}/activate")
+async def activate_mine(
+    mine_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Re-activate a suspended mine."""
+    mine = await db.get(Mine, mine_id)
+    if not mine:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Mine not found")
+    if mine.status != "suspended":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Only suspended mines can be re-activated",
+        )
+
+    mine.status = "active"
+    await db.commit()
+    return {"message": "Mine activated", "status": mine.status}

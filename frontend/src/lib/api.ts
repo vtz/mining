@@ -310,6 +310,7 @@ export interface Mine {
   region_name: string;
   primary_metal: string;
   mining_method: string;
+  status: string;
   recovery_params: Record<string, unknown> | null;
   commercial_terms: Record<string, unknown> | null;
   user_role: string | null;
@@ -319,6 +320,237 @@ export interface Mine {
 export interface MineListResponse {
   mines: Mine[];
   total: number;
+}
+
+// Mineral catalog types
+export interface MineralCatalog {
+  id: string;
+  code: string;
+  name: string;
+  price_unit: string;
+  default_price: number;
+  grade_unit: string;
+  implemented: boolean;
+}
+
+export interface MineralListResponse {
+  minerals: MineralCatalog[];
+  total: number;
+}
+
+// Mine mineral association
+export interface MineMineral {
+  id: string;
+  mineral_id: string;
+  mineral_code: string;
+  mineral_name: string;
+  is_primary: boolean;
+  recovery_rate: number | null;
+  commercial_terms: Record<string, unknown> | null;
+}
+
+// Parameter definition types
+export interface ParameterDefinition {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  category: string;
+  data_type: string;
+  unit: string | null;
+  default_value: string | null;
+  is_required: boolean;
+  validation_rules: Record<string, number> | null;
+  sort_order: number;
+}
+
+export interface ParameterDefinitionListResponse {
+  parameters: ParameterDefinition[];
+  total: number;
+}
+
+// Mine parameter value
+export interface MineParameterValue {
+  id: string;
+  parameter_id: string;
+  parameter_key: string;
+  parameter_name: string;
+  category: string;
+  data_type: string;
+  unit: string | null;
+  value: string;
+  default_value: string | null;
+  is_required: boolean;
+  validation_rules: Record<string, number> | null;
+}
+
+export interface MineParameterListResponse {
+  parameters: MineParameterValue[];
+  total: number;
+}
+
+// ──────────────────────────────────────────────────────────
+// Mineral catalog API
+// ──────────────────────────────────────────────────────────
+
+export async function fetchMinerals(): Promise<MineralListResponse> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/minerals`);
+  if (!response.ok) throw new Error('Failed to fetch minerals');
+  return response.json();
+}
+
+export async function createMineral(data: Omit<MineralCatalog, 'id'>): Promise<MineralCatalog> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/minerals`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create mineral');
+  }
+  return response.json();
+}
+
+export async function updateMineral(id: string, data: Partial<MineralCatalog>): Promise<MineralCatalog> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/minerals/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update mineral');
+  }
+  return response.json();
+}
+
+export async function deleteMineral(id: string): Promise<void> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/minerals/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error('Failed to delete mineral');
+}
+
+// ──────────────────────────────────────────────────────────
+// Parameter definitions API
+// ──────────────────────────────────────────────────────────
+
+export async function fetchParameterDefinitions(category?: string): Promise<ParameterDefinitionListResponse> {
+  const url = new URL(`${API_BASE_URL}/api/v1/parameters`);
+  if (category) url.searchParams.set('category', category);
+  const response = await authFetch(url.toString());
+  if (!response.ok) throw new Error('Failed to fetch parameter definitions');
+  return response.json();
+}
+
+export async function createParameterDefinition(data: Omit<ParameterDefinition, 'id'>): Promise<ParameterDefinition> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/parameters`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create parameter');
+  }
+  return response.json();
+}
+
+export async function updateParameterDefinition(id: string, data: Partial<ParameterDefinition>): Promise<ParameterDefinition> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/parameters/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update parameter');
+  }
+  return response.json();
+}
+
+export async function deleteParameterDefinition(id: string): Promise<void> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/parameters/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error('Failed to delete parameter');
+}
+
+// ──────────────────────────────────────────────────────────
+// Mine parameters API
+// ──────────────────────────────────────────────────────────
+
+export async function fetchMineParameters(mineId: string): Promise<MineParameterListResponse> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/parameters`);
+  if (!response.ok) throw new Error('Failed to fetch mine parameters');
+  return response.json();
+}
+
+export async function upsertMineParameters(
+  mineId: string,
+  params: { parameter_id: string; value: string }[],
+): Promise<MineParameterListResponse> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/parameters`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ parameters: params }),
+  });
+  if (!response.ok) throw new Error('Failed to save mine parameters');
+  return response.json();
+}
+
+// ──────────────────────────────────────────────────────────
+// Mine minerals API
+// ──────────────────────────────────────────────────────────
+
+export async function fetchMineMinerals(mineId: string): Promise<{ minerals: MineMineral[]; total: number }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/minerals`);
+  if (!response.ok) throw new Error('Failed to fetch mine minerals');
+  return response.json();
+}
+
+export async function setMineMinerals(
+  mineId: string,
+  minerals: { mineral_id: string; is_primary: boolean; recovery_rate?: number | null; commercial_terms?: Record<string, unknown> | null }[],
+): Promise<{ minerals: MineMineral[]; total: number }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/minerals`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ minerals }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to set mine minerals');
+  }
+  return response.json();
+}
+
+// ──────────────────────────────────────────────────────────
+// Mine commissioning API
+// ──────────────────────────────────────────────────────────
+
+export async function commissionMine(mineId: string): Promise<{ message: string; status: string }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/commission`, { method: 'POST' });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail));
+  }
+  return response.json();
+}
+
+export async function decommissionMine(mineId: string): Promise<{ message: string; status: string }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/decommission`, { method: 'POST' });
+  if (!response.ok) throw new Error('Failed to decommission mine');
+  return response.json();
+}
+
+export async function suspendMine(mineId: string): Promise<{ message: string; status: string }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/suspend`, { method: 'POST' });
+  if (!response.ok) throw new Error('Failed to suspend mine');
+  return response.json();
+}
+
+export async function activateMine(mineId: string): Promise<{ message: string; status: string }> {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/mines/${mineId}/activate`, { method: 'POST' });
+  if (!response.ok) throw new Error('Failed to activate mine');
+  return response.json();
 }
 
 // Fetch regions from API

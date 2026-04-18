@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.region import Region
     from app.models.user_mine import UserMine
+    from app.models.mineral import MineMineral
+    from app.models.parameter import MineParameter
 
 
 class Mine(Base):
@@ -63,6 +65,19 @@ class Mine(Base):
         nullable=True
     )  # {"payability": 0.965, "tc": 40, "rc": 1.9, ...}
     
+    # Commissioning lifecycle
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="draft", index=True,
+    )
+    commissioned_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    commissioned_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Audit
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
@@ -94,6 +109,20 @@ class Mine(Base):
         back_populates="mine",
         cascade="all, delete-orphan"
     )
+    mine_minerals: Mapped[List["MineMineral"]] = relationship(
+        "MineMineral",
+        back_populates="mine",
+        cascade="all, delete-orphan",
+    )
+    mine_parameters: Mapped[List["MineParameter"]] = relationship(
+        "MineParameter",
+        back_populates="mine",
+        cascade="all, delete-orphan",
+    )
+    commissioned_by_user: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[commissioned_by],
+    )
     
     def __repr__(self) -> str:
-        return f"<Mine {self.name} ({self.primary_metal})>"
+        return f"<Mine {self.name} ({self.primary_metal}) [{self.status}]>"

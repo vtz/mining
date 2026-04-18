@@ -13,6 +13,7 @@ interface Mine {
   region_name: string;
   primary_metal: string;
   mining_method: string;
+  status: string;
   enabled_features?: string[];
 }
 
@@ -47,6 +48,13 @@ const emptyNewRegion: NewRegionData = {
   municipality: '',
   latitude: '',
   longitude: '',
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  draft: 'bg-yellow-100 text-yellow-800',
+  active: 'bg-green-100 text-green-800',
+  suspended: 'bg-orange-100 text-orange-800',
+  decommissioned: 'bg-gray-100 text-gray-500',
 };
 
 export default function MinesPage() {
@@ -280,18 +288,26 @@ export default function MinesPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('admin.mines.title')}</h1>
           <p className="text-gray-600">{t('admin.mines.subtitle')}</p>
         </div>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setEditingId(null);
-            setFormData({ name: '', region_id: '', primary_metal: 'Cu', mining_method: 'UG' });
-            setCreateNewRegion(false);
-            setNewRegionData(emptyNewRegion);
-          }}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-        >
-          {t('admin.mines.newMine')}
-        </button>
+        <div className="flex gap-2">
+          <a
+            href="/admin/mines/commission"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            {t('admin.mines.commissionMine')}
+          </a>
+          <button
+            onClick={() => {
+              setShowForm(true);
+              setEditingId(null);
+              setFormData({ name: '', region_id: '', primary_metal: 'Cu', mining_method: 'UG' });
+              setCreateNewRegion(false);
+              setNewRegionData(emptyNewRegion);
+            }}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            {t('admin.mines.newMine')}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -472,6 +488,9 @@ export default function MinesPage() {
                 {t('admin.mines.method')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                {t('admin.mines.status')}
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 {t('features.title')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -500,6 +519,11 @@ export default function MinesPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {mine.mining_method === 'UG' ? t('admin.mines.underground') : t('admin.mines.openPit')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${STATUS_STYLES[mine.status || 'active'] || STATUS_STYLES.active}`}>
+                    {t(`admin.mines.${mine.status || 'active'}`)}
+                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <div className="flex flex-wrap gap-1">
