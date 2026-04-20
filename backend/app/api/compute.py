@@ -5,6 +5,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.nsr_engine.audit import NSRAuditReport, generate_audit_report
 from app.nsr_engine.calculations import compute_nsr_complete
 from app.nsr_engine.models import NSRInput, NSRResult
 from app.nsr_engine.goal_seek import (
@@ -170,6 +171,60 @@ async def compute_nsr(request: ComputeNSRRequest) -> NSRResult:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Computation error: {str(e)}")
+
+
+@router.post("/compute/nsr/audit", response_model=NSRAuditReport)
+async def compute_nsr_audit(request: ComputeNSRRequest) -> NSRAuditReport:
+    """
+    Generate a step-by-step audit report for an NSR calculation.
+
+    Returns every intermediate value, the formula used, and automated
+    cross-checks so domain experts can verify the algorithm.
+    """
+    try:
+        cu_price = request.cu_price
+        au_price = request.au_price
+        ag_price = request.ag_price
+
+        if cu_price is None or au_price is None or ag_price is None:
+            live_prices = await get_metal_prices()
+            if cu_price is None:
+                cu_price = live_prices.cu_price_per_lb
+            if au_price is None:
+                au_price = live_prices.au_price_per_oz
+            if ag_price is None:
+                ag_price = live_prices.ag_price_per_oz
+
+        nsr_input = NSRInput(
+            mine=request.mine,
+            area=request.area,
+            cu_grade=request.cu_grade,
+            au_grade=request.au_grade,
+            ag_grade=request.ag_grade,
+            ore_tonnage=request.ore_tonnage,
+            mine_dilution=request.mine_dilution,
+            ore_recovery=request.ore_recovery,
+            cu_price=cu_price,
+            au_price=au_price,
+            ag_price=ag_price,
+            cu_payability=request.cu_payability,
+            cu_tc=request.cu_tc,
+            cu_rc=request.cu_rc,
+            cu_freight=request.cu_freight,
+            mine_cost=request.mine_cost,
+            development_cost=request.development_cost,
+            development_meters=request.development_meters,
+            haul_cost=request.haul_cost,
+            plant_cost=request.plant_cost,
+            ga_cost=request.ga_cost,
+        )
+
+        return generate_audit_report(nsr_input)
+
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Audit report error: {str(e)}")
 
 
 @router.post("/compute/scenarios", response_model=ScenariosResponse)

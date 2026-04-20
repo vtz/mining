@@ -197,6 +197,70 @@ export async function setDefaultProvider(providerName: string): Promise<void> {
   }
 }
 
+// ──────────────────────────────────────────────────────────
+// NSR Audit Report
+// ──────────────────────────────────────────────────────────
+
+export interface InputAuditEntry {
+  parameter: string;
+  value: number | string;
+  unit: string;
+  source: 'user' | 'default';
+  default_value?: number | string | null;
+}
+
+export interface AuditStep {
+  step: number;
+  name: string;
+  formula: string;
+  substitution: string;
+  result: number;
+  unit: string;
+}
+
+export interface CrossCheck {
+  label: string;
+  expected: number;
+  actual: number;
+  difference: number;
+  passed: boolean;
+}
+
+export interface RecoveryParamsAudit {
+  area: string;
+  a: number;
+  b: number;
+  fixed: number | null;
+  source: string;
+}
+
+export interface NSRAuditReport {
+  generated_at: string;
+  mine: string;
+  area: string;
+  inputs: InputAuditEntry[];
+  recovery_params: RecoveryParamsAudit;
+  constants: Record<string, number>;
+  steps: AuditStep[];
+  cross_checks: CrossCheck[];
+  results_summary: Record<string, number>;
+}
+
+export async function computeNSRAudit(input: NSRInput): Promise<NSRAuditReport> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/compute/nsr/audit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to generate audit report');
+  }
+
+  return response.json();
+}
+
 // Scenarios
 export interface ScenarioResult {
   name: string;

@@ -144,6 +144,7 @@
     "nsrFinal": "NSR Final",
     "netValue": "Valor neto",
     "exportCSV": "Exportar CSV",
+    "auditReport": "Informe de Auditoría",
     "generateScenarios": "Generar Escenarios",
     "sensitivity": "Análisis de Sensibilidad",
     "calculated": "Cálculo completado",

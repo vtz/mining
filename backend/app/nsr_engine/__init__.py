@@ -1,5 +1,6 @@
 """NSR Engine - Core calculation library."""
 
+from app.nsr_engine.audit import NSRAuditReport, generate_audit_report
 from app.nsr_engine.calculations import (
     compute_cu_recovery,
     compute_payable_metal,
@@ -34,8 +35,10 @@ __all__ = [
     "compute_gross_revenue",
     "compute_deductions",
     "compute_nsr_complete",
+    "generate_audit_report",
     "NSRInput",
     "NSRResult",
+    "NSRAuditReport",
     "MetalResult",
     "DeductionsResult",
     "goal_seek",
