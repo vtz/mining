@@ -379,8 +379,12 @@ def compute_nsr_complete(inputs: NSRInput) -> NSRResult:
 
     cu_conc_grade = inputs.cu_conc_grade or DEFAULT_CU_CONC_GRADE
 
-    # Step 1: Calculate Cu recovery
-    cu_recovery = compute_cu_recovery(inputs.cu_grade, inputs.area)
+    # Step 1: Calculate Cu recovery (allow explicit override)
+    cu_recovery = (
+        inputs.cu_recovery
+        if inputs.cu_recovery is not None
+        else compute_cu_recovery(inputs.cu_grade, inputs.area)
+    )
     au_recovery = DEFAULT_AU_RECOVERY
     ag_recovery = DEFAULT_AG_RECOVERY
 

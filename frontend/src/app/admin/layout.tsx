@@ -19,6 +19,7 @@ export default function AdminLayout({
     { href: '/admin/users', label: t('nav.users') },
     { href: '/admin/regions', label: t('nav.regions') },
     { href: '/admin/mines', label: t('nav.mines') },
+    { href: '/admin/minerals', label: t('nav.minerals') },
   ];
 
   return (

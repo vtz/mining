@@ -57,6 +57,9 @@ DEFAULT_AG_RC = 0.35  # $/oz Ag payable
 # Concentrate Grade (Base Case from Excel)
 DEFAULT_CU_CONC_GRADE = 33.5  # % Cu in concentrate (Base Case)
 
+# Chalcopyrite (CuFeS₂) stoichiometric limit: 34.63% Cu by weight
+DEFAULT_CU_CONC_GRADE_MAX = 34.6  # % Cu max theoretical for chalcopyrite
+
 # Royalties
 DEFAULT_CFEM_RATE = 0.02  # 2%
 DEFAULT_THIRD_PARTY_ROYALTY = 0.0  # 0%

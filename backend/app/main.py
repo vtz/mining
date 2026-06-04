@@ -14,6 +14,8 @@ from app.api.users import router as users_router
 from app.api.goal_seek_scenarios import router as goal_seek_router
 from app.api.blocks import router as blocks_router
 from app.api.features import router as features_router
+from app.api.minerals import router as minerals_router
+from app.api.parameters import param_router, mine_param_router
 from app.api.errors import setup_error_handlers
 from app.auth.router import router as auth_router
 from app.middleware.security import SecurityHeadersMiddleware
@@ -84,6 +86,9 @@ app.include_router(users_router, prefix="/api/v1", tags=["Users"])
 app.include_router(goal_seek_router, prefix="/api/v1", tags=["Goal Seek"])
 app.include_router(blocks_router, prefix="/api/v1", tags=["Blocks"])
 app.include_router(features_router, prefix="/api/v1", tags=["Features"])
+app.include_router(minerals_router, prefix="/api/v1", tags=["Minerals"])
+app.include_router(param_router, prefix="/api/v1", tags=["Parameters"])
+app.include_router(mine_param_router, prefix="/api/v1", tags=["Parameters"])
 
 
 @app.get("/")

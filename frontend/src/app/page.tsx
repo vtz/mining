@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import NSRForm from '@/components/NSRForm';
 import NSRResult from '@/components/NSRResult';
+import NSRAuditReport from '@/components/NSRAuditReport';
 import ScenarioComparison from '@/components/ScenarioComparison';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/AppLayout';
@@ -14,10 +15,12 @@ import { useToast } from '@/components/ui/Toast';
 import { ResultSkeleton } from '@/components/ui/Skeleton';
 import { 
   computeNSR, 
+  computeNSRAudit,
   computeScenarios,
   exportResultCSV,
   NSRInput, 
   NSRResult as NSRResultType,
+  NSRAuditReport as NSRAuditReportType,
   ScenarioResult 
 } from '@/lib/api';
 
@@ -32,6 +35,7 @@ function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [showScenarios, setShowScenarios] = useState(false);
   const [showSensitivity, setShowSensitivity] = useState(false);
+  const [auditReport, setAuditReport] = useState<NSRAuditReportType | null>(null);
   const [variation, setVariation] = useState(10);
 
   // Keyboard shortcut for calculate
@@ -110,6 +114,24 @@ function HomePage() {
       showError(t('errors.exportFailed'), message);
     }
   };
+
+  const handleAuditReport = async () => {
+    if (!lastInput) return;
+
+    try {
+      const report = await computeNSRAudit(lastInput);
+      setAuditReport(report);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate audit report';
+      showError('Audit Report Failed', message);
+    }
+  };
+
+  if (auditReport) {
+    return (
+      <NSRAuditReport report={auditReport} onClose={() => setAuditReport(null)} />
+    );
+  }
 
   return (
     <AppLayout>
@@ -197,6 +219,18 @@ function HomePage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                         {t('results.exportCSV')}
+                      </button>
+
+                      <button
+                        onClick={handleAuditReport}
+                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                          text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 
+                          transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {t('results.auditReport')}
                       </button>
                       
                       <div className="flex items-center gap-2 flex-1 min-w-[200px]">
