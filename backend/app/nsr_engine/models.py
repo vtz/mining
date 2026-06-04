@@ -62,6 +62,7 @@ class NSRInput(BaseModel):
     ag_rc: Optional[float] = Field(default=None, description="Refining charge Ag ($/oz)")
 
     cu_conc_grade: Optional[float] = Field(default=None, description="Cu concentrate grade (%)")
+    cu_recovery: Optional[float] = Field(default=None, ge=0, le=1, description="Cu recovery override (decimal)")
 
     # Operational costs (for EBITDA)
     mine_cost: Optional[float] = Field(default=None, ge=0, description="Mining cost ($/t ore)")

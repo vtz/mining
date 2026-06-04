@@ -748,6 +748,74 @@ export async function fetchGoalSeekVariables(): Promise<GoalSeekVariable[]> {
 }
 
 // ──────────────────────────────────────────────────────────
+// Recovery vs Concentrate Curve
+// ──────────────────────────────────────────────────────────
+
+export interface RecoveryCurveRequest {
+  mine: string;
+  area: string;
+  cu_grade: number;
+  au_grade: number;
+  ag_grade: number;
+  ore_tonnage?: number;
+  mine_dilution?: number;
+  ore_recovery?: number;
+  cu_price?: number;
+  au_price?: number;
+  ag_price?: number;
+  cu_payability?: number;
+  cu_tc?: number;
+  cu_rc?: number;
+  cu_freight?: number;
+  num_points?: number;
+  recovery_min?: number;
+  recovery_max?: number;
+  conc_grade_max?: number;
+}
+
+export interface RecoveryCurvePoint {
+  cu_recovery: number;
+  cu_recovery_pct: number;
+  cu_conc_grade: number;
+  nsr_per_tonne: number;
+  nsr_cu: number;
+  nsr_au: number;
+  nsr_ag: number;
+  conc_ratio: number;
+  conc_price_total: number;
+  is_base_point: boolean;
+}
+
+export interface RecoveryCurveModelParams {
+  shape_factor_n: number;
+  conc_grade_max: number;
+  head_grade: number;
+  base_recovery: number;
+  base_conc_grade: number;
+}
+
+export interface RecoveryCurveResponse {
+  base_point: RecoveryCurvePoint;
+  curve: RecoveryCurvePoint[];
+  model_params: RecoveryCurveModelParams;
+}
+
+export async function computeRecoveryCurve(request: RecoveryCurveRequest): Promise<RecoveryCurveResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/compute/recovery-curve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to compute recovery curve');
+  }
+
+  return response.json();
+}
+
+// ──────────────────────────────────────────────────────────
 // Goal Seek Scenarios (CRUD)
 // ──────────────────────────────────────────────────────────
 

@@ -24,6 +24,12 @@ from app.nsr_engine.goal_seek import (
     GoalSeekError,
     GOAL_SEEK_VARIABLES,
 )
+from app.nsr_engine.recovery_curve import (
+    generate_recovery_curve,
+    RecoveryCurvePoint,
+    RecoveryCurveModelParams,
+    RecoveryCurveResult,
+)
 
 __all__ = [
     "compute_cu_recovery",
@@ -45,4 +51,8 @@ __all__ = [
     "GoalSeekResult",
     "GoalSeekError",
     "GOAL_SEEK_VARIABLES",
+    "generate_recovery_curve",
+    "RecoveryCurvePoint",
+    "RecoveryCurveModelParams",
+    "RecoveryCurveResult",
 ]
