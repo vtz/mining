@@ -110,7 +110,7 @@ export default function UsersPage() {
     }
   };
 
-  const toggleAdmin = async (userId: string, currentStatus: boolean) => {
+  const _toggleAdmin = async (userId: string, currentStatus: boolean) => {
     try {
       const response = await authFetch(`${API_BASE_URL}/api/v1/users/${userId}`, {
         method: 'PUT',
@@ -124,7 +124,7 @@ export default function UsersPage() {
     }
   };
 
-  const toggleActive = async (userId: string, currentStatus: boolean) => {
+  const _toggleActive = async (userId: string, currentStatus: boolean) => {
     try {
       const response = await authFetch(`${API_BASE_URL}/api/v1/users/${userId}`, {
         method: 'PUT',

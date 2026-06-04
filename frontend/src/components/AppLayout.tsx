@@ -14,14 +14,19 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const pathname = usePathname();
+  const [prevPathname, setPrevPathname] = useState(pathname);
 
-  // Handle responsive behavior
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    if (showMobileSidebar) {
+      setShowMobileSidebar(false);
+    }
+  }
+
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
       if (window.innerWidth < 1024) {
         setSidebarCollapsed(true);
       }
@@ -31,11 +36,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  // Close mobile sidebar on navigation
-  useEffect(() => {
-    setShowMobileSidebar(false);
-  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">

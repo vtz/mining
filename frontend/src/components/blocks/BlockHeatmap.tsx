@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { motion } from 'framer-motion';
 import { HeatmapBlock, HeatmapResponse, fetchHeatmapData, listBlockLevels, listBlockSnapshots } from '@/lib/api';
 
 interface BlockHeatmapProps {
@@ -58,7 +57,7 @@ export default function BlockHeatmap({ importId, onBlockSelect }: BlockHeatmapPr
   // Load heatmap data when level/snapshot changes
   useEffect(() => {
     if (currentLevel === null) return;
-    setLoading(true);
+    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect
     setError(null);
     fetchHeatmapData(importId, currentLevel, currentSnapshot || undefined)
       .then(setHeatmapData)
@@ -70,7 +69,7 @@ export default function BlockHeatmap({ importId, onBlockSelect }: BlockHeatmapPr
   }, [importId, currentLevel, currentSnapshot]);
 
   // Calculate SVG viewport from block positions
-  const { viewBox, scaleX, scaleY, offsetX, offsetY, width, height } = useMemo(() => {
+  const { viewBox, scaleX, scaleY, offsetX, offsetY, height } = useMemo(() => {
     if (!heatmapData?.blocks.length) {
       return { viewBox: '0 0 800 600', scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, width: 800, height: 600 };
     }

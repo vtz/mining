@@ -11,7 +11,6 @@ interface Region { id: string; name: string; country: string; state: string | nu
 interface Mineral { id: string; code: string; name: string; price_unit: string; default_price: number; grade_unit: string; implemented: boolean; }
 interface MineMineral { mineral_id: string; is_primary: boolean; recovery_rate: number | null; commercial_terms: Record<string, unknown> | null; }
 interface ParamDef { id: string; key: string; name: string; description: string | null; category: string; data_type: string; unit: string | null; default_value: string | null; is_required: boolean; validation_rules: Record<string, number> | null; sort_order: number; }
-interface MineParam { parameter_id: string; value: string; }
 interface UserEntry { user_id: string; email: string; name: string; role: string; }
 interface Feature { feature_key: string; name: string; description: string; enabled: boolean; is_default: boolean; }
 interface UserOption { id: string; email: string; name: string; }

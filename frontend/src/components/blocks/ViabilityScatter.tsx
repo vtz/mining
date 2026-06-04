@@ -76,11 +76,6 @@ export default function ViabilityScatter({ blocks, cutoffCost }: ViabilityScatte
     return { viableData: viable, inviableData: inviable, marginalData: marginal };
   }, [blocks, cutoffCost]);
 
-  const maxTonnage = useMemo(() => {
-    const all = [...viableData, ...inviableData, ...marginalData];
-    return Math.max(...all.map((p) => p.tonnage), 1);
-  }, [viableData, inviableData, marginalData]);
-
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">

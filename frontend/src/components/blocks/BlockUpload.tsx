@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mine, PreviewResponse, uploadBlockPreview, uploadBlocks } from '@/lib/api';
@@ -19,16 +19,17 @@ export default function BlockUpload({ mines, onImportComplete }: BlockUploadProp
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [selectedMine, setSelectedMine] = useState(mines[0]?.id || '');
+  const [prevMines, setPrevMines] = useState(mines);
   const [importName, setImportName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Update selectedMine when mines load/change
-  useEffect(() => {
+  if (prevMines !== mines) {
+    setPrevMines(mines);
     if (!selectedMine && mines.length > 0) {
       setSelectedMine(mines[0].id);
     }
-  }, [mines, selectedMine]);
+  }
 
   const handleFile = useCallback(async (f: File) => {
     setFile(f);

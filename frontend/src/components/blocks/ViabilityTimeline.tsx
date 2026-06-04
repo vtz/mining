@@ -51,7 +51,7 @@ export default function ViabilityTimeline({ importId }: ViabilityTimelineProps) 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect
     fetchViabilityTimeline(importId)
       .then(setData)
       .catch(() => setData(null))

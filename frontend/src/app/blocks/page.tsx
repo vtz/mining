@@ -35,7 +35,7 @@ function BlocksPage() {
   const [imports, setImports] = useState<BlockImportData[]>([]);
   const [selectedImport, setSelectedImport] = useState<BlockImportData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('imports');
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [calcLoading, setCalcLoading] = useState(false);
   const [cutoffCost, setCutoffCost] = useState(45);
 

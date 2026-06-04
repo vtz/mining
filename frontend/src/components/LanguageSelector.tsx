@@ -16,7 +16,7 @@ export default function LanguageSelector() {
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
 
   useEffect(() => {
-    setMounted(true);
+    setMounted(true); // eslint-disable-line react-hooks/set-state-in-effect -- SSR hydration gate
   }, []);
 
   const updatePosition = useCallback(() => {

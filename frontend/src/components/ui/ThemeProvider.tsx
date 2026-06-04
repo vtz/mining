@@ -21,6 +21,16 @@ export function useTheme() {
   return context;
 }
 
+function getSystemTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function resolveTheme(themeValue: Theme): 'light' | 'dark' {
+  if (themeValue === 'system') return getSystemTheme();
+  return themeValue;
+}
+
 interface ThemeProviderProps {
   children: ReactNode;
   defaultTheme?: Theme;
@@ -31,25 +41,11 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
-  // Get system preference
-  const getSystemTheme = (): 'light' | 'dark' => {
-    if (typeof window === 'undefined') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  };
-
-  // Resolve theme based on setting
-  const resolveTheme = (themeValue: Theme): 'light' | 'dark' => {
-    if (themeValue === 'system') {
-      return getSystemTheme();
-    }
-    return themeValue;
-  };
-
   // Initialize theme from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('theme') as Theme | null;
     if (stored && ['light', 'dark', 'system'].includes(stored)) {
-      setThemeState(stored);
+      setThemeState(stored); // eslint-disable-line react-hooks/set-state-in-effect -- hydrate from localStorage
       setResolvedTheme(resolveTheme(stored));
     } else {
       setResolvedTheme(resolveTheme(defaultTheme));

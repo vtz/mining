@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -73,14 +73,10 @@ export function clearCalculationHistory() {
 
 export default function CalculationHistory({ onSelect, onCompare, maxItems = 10 }: CalculationHistoryProps) {
   const t = useTranslations('history');
-  const [records, setRecords] = useState<CalculationRecord[]>([]);
+  const [records, setRecords] = useState<CalculationRecord[]>(() => getCalculationHistory());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [filter, setFilter] = useState<string>('');
-
-  useEffect(() => {
-    setRecords(getCalculationHistory());
-  }, []);
 
   const handleSelect = (record: CalculationRecord) => {
     if (isCompareMode) {

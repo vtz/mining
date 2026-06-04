@@ -11,13 +11,35 @@ import {
   Tooltip, 
   Legend, 
   ResponsiveContainer,
-  Cell,
 } from 'recharts';
 import { ScenarioResult } from '@/lib/api';
 
 interface ScenarioComparisonProps {
   scenarios: ScenarioResult[];
   variation: number;
+}
+
+function ScenarioTooltip({ active, payload, label }: {
+  active?: boolean;
+  payload?: Array<{ value: number; dataKey: string }>;
+  label?: string;
+}) {
+  if (active && payload && payload.length) {
+    const fmt = (v: number) => new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2,
+    }).format(v);
+    return (
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+        <p className="font-semibold text-gray-900 dark:text-white mb-2">{label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} className="text-sm text-gray-600 dark:text-gray-400">
+            {entry.dataKey === 'nsr' ? 'NSR Total' : entry.dataKey.toUpperCase()}: {fmt(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
 }
 
 export default function ScenarioComparison({ 
@@ -62,23 +84,6 @@ export default function ScenarioComparison({
       case 'Upside': return '#22c55e';
       default: return '#6b7280';
     }
-  };
-
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string }>; label?: string }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-          <p className="font-semibold text-gray-900 dark:text-white mb-2">{label}</p>
-          {payload.map((entry, index) => (
-            <p key={index} className="text-sm text-gray-600 dark:text-gray-400">
-              {entry.dataKey === 'nsr' ? 'NSR Total' : entry.dataKey.toUpperCase()}: {formatCurrency(entry.value)}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
   };
 
   return (
@@ -181,7 +186,7 @@ export default function ScenarioComparison({
               <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
               <XAxis dataKey="name" className="text-gray-600 dark:text-gray-400" />
               <YAxis tickFormatter={(v) => `$${v}`} className="text-gray-600 dark:text-gray-400" />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<ScenarioTooltip />} />
               <Legend />
               <Bar dataKey="cu" stackId="a" fill="#f97316" name="Cu" radius={[0, 0, 0, 0]} />
               <Bar dataKey="au" stackId="a" fill="#eab308" name="Au" radius={[0, 0, 0, 0]} />

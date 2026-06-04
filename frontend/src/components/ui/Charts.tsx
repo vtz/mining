@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 
@@ -18,6 +19,26 @@ interface DonutChartProps {
   className?: string;
 }
 
+function DonutTooltip({ active, payload, total }: {
+  active?: boolean;
+  payload?: Array<{ payload: DonutChartData }>;
+  total: number;
+}) {
+  if (active && payload && payload.length) {
+    const item = payload[0].payload;
+    const percentage = ((item.value / total) * 100).toFixed(1);
+    return (
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+        <p className="font-medium text-gray-900 dark:text-white">{item.name}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          ${item.value.toFixed(2)} ({percentage}%)
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
 export function DonutChart({ 
   data, 
   centerLabel, 
@@ -26,22 +47,6 @@ export function DonutChart({
   className = '' 
 }: DonutChartProps) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
-
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: DonutChartData }> }) => {
-    if (active && payload && payload.length) {
-      const item = payload[0].payload;
-      const percentage = ((item.value / total) * 100).toFixed(1);
-      return (
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-          <p className="font-medium text-gray-900 dark:text-white">{item.name}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            ${item.value.toFixed(2)} ({percentage}%)
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className={`relative ${className}`} style={{ height }}>
@@ -66,7 +71,7 @@ export function DonutChart({
               />
             ))}
           </Pie>
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<DonutTooltip total={total} />} />
           <Legend 
             verticalAlign="bottom" 
             height={36}
@@ -113,32 +118,31 @@ interface WaterfallChartProps {
 }
 
 export function WaterfallChart({ steps, className = '' }: WaterfallChartProps) {
-  // Calculate cumulative values
-  let cumulative = 0;
-  const processedSteps = steps.map((step, index) => {
-    let start = cumulative;
-    let end = cumulative;
+  const processedSteps = useMemo(() => {
+    const result: Array<WaterfallStep & { start: number; end: number; index: number }> = [];
+    let cumulative = 0;
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      let start = cumulative;
+      let end = cumulative;
 
-    if (step.type === 'start' || step.type === 'total') {
-      start = 0;
-      end = step.value;
-    } else if (step.type === 'add') {
-      end = cumulative + step.value;
-    } else if (step.type === 'subtract') {
-      end = cumulative - step.value;
+      if (step.type === 'start' || step.type === 'total') {
+        start = 0;
+        end = step.value;
+      } else if (step.type === 'add') {
+        end = cumulative + step.value;
+      } else if (step.type === 'subtract') {
+        end = cumulative - step.value;
+      }
+
+      if (step.type !== 'total') {
+        cumulative = end;
+      }
+
+      result.push({ ...step, start, end, index: i });
     }
-
-    if (step.type !== 'total') {
-      cumulative = end;
-    }
-
-    return {
-      ...step,
-      start,
-      end,
-      index,
-    };
-  });
+    return result;
+  }, [steps]);
 
   const maxValue = Math.max(...processedSteps.map(s => Math.max(s.start, s.end)));
   const minValue = Math.min(...processedSteps.map(s => Math.min(s.start, s.end)), 0);
