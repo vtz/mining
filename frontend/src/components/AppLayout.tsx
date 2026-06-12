@@ -40,7 +40,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
           {/* Sidebar - Desktop */}
-          <div className="hidden lg:block">
+          <div className="hidden lg:block fixed left-0 top-0 h-screen z-40">
             <Sidebar 
               isCollapsed={sidebarCollapsed} 
               onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
@@ -56,12 +56,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
           )}
 
           {/* Mobile Sidebar */}
-          <div className={`fixed inset-y-0 left-0 z-40 lg:hidden transform transition-transform duration-300 ${
+          <div className={`fixed inset-y-0 left-0 z-40 lg:hidden transition-transform duration-300 ${
             showMobileSidebar ? 'translate-x-0' : '-translate-x-full'
           }`}>
             <Sidebar 
               isCollapsed={false} 
               onToggle={() => setShowMobileSidebar(false)} 
+              onNavigate={() => setShowMobileSidebar(false)}
             />
           </div>
 

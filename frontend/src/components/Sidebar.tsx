@@ -19,9 +19,10 @@ interface NavItem {
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  onNavigate?: () => void;
 }
 
-export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ isCollapsed, onToggle, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('nav');
   const { user } = useAuth();
@@ -133,8 +134,8 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 
-        transition-all duration-300 z-40 flex flex-col ${isCollapsed ? 'w-16' : 'w-64'}`}
+      className={`h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 
+        transition-all duration-300 flex flex-col ${isCollapsed ? 'w-16' : 'w-64'}`}
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800">
@@ -177,6 +178,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors relative group
                 ${isActive(item.href)
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
@@ -230,6 +232,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onNavigate}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors relative group
                     ${isActive(item.href)
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
